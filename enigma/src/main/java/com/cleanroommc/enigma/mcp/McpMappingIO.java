@@ -174,13 +174,13 @@ public class McpMappingIO {
 			 var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
 			 var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
 
-			record ParamKey(String methodIndex, int localIndex) {
+			record ParamKey(String methodIndex, String localIndex) {
 			}
 
 			var fields = new TreeMap<String, McpMapping.FieldMappingEntry>();
 			var methods = new TreeMap<String, McpMapping.MethodMappingEntry>();
 			var params = new TreeMap<ParamKey, McpMapping.ParamMappingEntry>(
-					Comparator.comparing(ParamKey::methodIndex).thenComparingInt(ParamKey::localIndex)
+					Comparator.comparing(ParamKey::methodIndex).thenComparing(ParamKey::localIndex)
 			);
 
 			mappings.getAllEntries().forEach(entry -> {
@@ -207,7 +207,7 @@ public class McpMappingIO {
 					var paramMappingEntry = mcpMapping.params().get(srgParamName);
 					int side = paramMappingEntry == null ? 0 : paramMappingEntry.side();
 
-					params.put(new ParamKey(methodIndex, localEntry.getIndex()), new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side));
+					params.put(new ParamKey(methodIndex, String.valueOf(localEntry.getIndex())), new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side));
 				}
 			});
 
