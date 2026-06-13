@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import com.cleanroommc.enigma.mcp.McpMappingIO;
+
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.MappingWriter;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
@@ -24,6 +26,33 @@ import cuchaz.enigma.translation.mapping.tree.EntryTree;
 import cuchaz.enigma.utils.I18n;
 
 public enum MappingFormat {
+	MCP(FileType.ZIP, null) {
+		@Override
+		public EntryTree<EntryMapping> read(
+				Path path,
+				ProgressListener progressListener,
+				MappingSaveParameters saveParameters,
+				JarIndex index
+		) throws IOException, MappingParseException {
+			return McpMappingIO.read(path, progressListener, saveParameters, index);
+		}
+
+		@Override
+		public void write(
+				EntryTree<EntryMapping> mappings,
+				MappingDelta<EntryMapping> delta,
+				Path path,
+				ProgressListener progressListener,
+				MappingSaveParameters saveParameters
+		) {
+			McpMappingIO.write(mappings, delta, path, progressListener, saveParameters);
+		}
+
+		@Override
+		public boolean isWritable() {
+			return false;
+		}
+	},
 	ENIGMA_FILE(FileType.MAPPING, net.fabricmc.mappingio.format.MappingFormat.ENIGMA_FILE),
 	ENIGMA_DIRECTORY(FileType.DIRECTORY, net.fabricmc.mappingio.format.MappingFormat.ENIGMA_DIR),
 	TINY_V2(FileType.TINY, net.fabricmc.mappingio.format.MappingFormat.TINY_2_FILE),
@@ -45,7 +74,7 @@ public enum MappingFormat {
 
 	MappingFormat(FileType fileType, net.fabricmc.mappingio.format.MappingFormat mappingIoCounterpart) {
 		this.fileType = fileType;
-		this.mappingIoCounterpart = Objects.requireNonNull(mappingIoCounterpart);
+		this.mappingIoCounterpart = mappingIoCounterpart;
 	}
 
 	public void write(EntryTree<EntryMapping> mappings, Path path, ProgressListener progressListener, MappingSaveParameters saveParameters) {
@@ -149,6 +178,7 @@ public enum MappingFormat {
 		public static final FileType TXT = new FileType(".txt");
 		public static final FileType JOBF = new FileType(".jobf");
 		public static final FileType XML = new FileType(".xml");
+		public static final FileType ZIP = new FileType(".zip");
 
 		public FileType(String... extensions) {
 			this(List.of(extensions));
