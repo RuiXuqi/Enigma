@@ -19,8 +19,10 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -155,7 +157,7 @@ public class McpMappingIO {
 			ProgressListener progressListener,
 			MappingSaveParameters saveParameters
 	) {
-		progressListener.init(3, "Writing MCP mappings");
+		progressListener.init(2, "Writing MCP mappings");
 
 		var fieldMethodFormat = CSVFormat.DEFAULT.builder()
 				.setHeader("searge", "name", "side", "desc")
@@ -164,13 +166,22 @@ public class McpMappingIO {
 				.setHeader("param", "name", "side")
 				.get();
 
-		var fields = new StringBuilder();
-		var methods = new StringBuilder();
-		var params = new StringBuilder();
+		var fieldsWriter = new StringBuilder();
+		var methodsWriter = new StringBuilder();
+		var paramsWriter = new StringBuilder();
 
-		try (var fieldPrinter = new CSVPrinter(fields, fieldMethodFormat);
-			 var methodPrinter = new CSVPrinter(methods, fieldMethodFormat);
-			 var paramPrinter = new CSVPrinter(params, paramFormat)) {
+		try (var fieldPrinter = new CSVPrinter(fieldsWriter, fieldMethodFormat);
+			 var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
+			 var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
+
+			record ParamKey(String methodIndex, int localIndex) {
+			}
+
+			var fields = new TreeMap<String, McpMapping.FieldMappingEntry>();
+			var methods = new TreeMap<String, McpMapping.MethodMappingEntry>();
+			var params = new TreeMap<ParamKey, McpMapping.ParamMappingEntry>(
+					Comparator.comparing(ParamKey::methodIndex).thenComparingInt(ParamKey::localIndex)
+			);
 
 			mappings.getAllEntries().forEach(entry -> {
 				var mapping = mappings.get(entry);
@@ -178,21 +189,36 @@ public class McpMappingIO {
 					return;
 				}
 
-				try {
-					if (entry instanceof FieldEntry) {
-						int side = lookupSide(mcpMapping, entry.getName());
-						fieldPrinter.printRecord(entry.getName(), mapping.targetName(), side, mapping.javadoc());
-					} else if (entry instanceof MethodEntry) {
-						int side = lookupSide(mcpMapping, entry.getName());
-						methodPrinter.printRecord(entry.getName(), mapping.targetName(), side, mapping.javadoc());
-					} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
-						int side = lookupParamSide(mcpMapping, localEntry);
-						paramPrinter.printRecord(localEntry.getName(), mapping.targetName(), side);
-					}
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
+				if (entry instanceof FieldEntry) {
+					var fieldEntry = mcpMapping.fields().get(entry.getName());
+					int side = fieldEntry != null ? fieldEntry.side() : 0;
+
+					fields.put(entry.getName(), new McpMapping.FieldMappingEntry(entry.getName(), mapping.targetName(), side, mapping.javadoc()));
+				} else if (entry instanceof MethodEntry) {
+					var methodEntry = mcpMapping.methods().get(entry.getName());
+					int side = methodEntry != null ? methodEntry.side() : 0;
+
+					methods.put(entry.getName(), new McpMapping.MethodMappingEntry(entry.getName(), mapping.targetName(), side, mapping.javadoc()));
+				} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
+					// for whatever reason, localEntry.getName() gives remapped name, so build param name ourselves: p_<method_index>_<index>_
+					var methodIndex = localEntry.getParent().getName().substring("func_".length()).split("_", 2)[0];
+					var srgParamName = "p_" + methodIndex + "_" + localEntry.getIndex() + "_";
+
+					var paramMappingEntry = mcpMapping.params().get(srgParamName);
+					int side = paramMappingEntry == null ? 0 : paramMappingEntry.side();
+
+					params.put(new ParamKey(methodIndex, localEntry.getIndex()), new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side));
 				}
 			});
+			for (var entry : fields.values()) {
+				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc());
+			}
+			for (var entry : methods.values()) {
+				methodPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc());
+			}
+			for (var entry : params.values()) {
+				paramPrinter.printRecord(entry.param(), entry.name(), entry.side());
+			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -200,37 +226,13 @@ public class McpMappingIO {
 
 		try (var fos = new FileOutputStream(path.toFile());
 			 var zos = new ZipOutputStream(fos)) {
-			writeZipEntry(zos, "fields.csv", fields.toString());
-			progressListener.step(2, "Fields written");
-			writeZipEntry(zos, "methods.csv", methods.toString());
-			writeZipEntry(zos, "params.csv", params.toString());
+			writeZipEntry(zos, "fields.csv", fieldsWriter.toString());
+			writeZipEntry(zos, "methods.csv", methodsWriter.toString());
+			writeZipEntry(zos, "params.csv", paramsWriter.toString());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		progressListener.step(3, "Done");
-	}
-
-	private static int lookupSide(McpMapping mcpMapping, String searge) {
-		if (searge.startsWith("field_")) {
-			var fieldEntry = mcpMapping.fields().get(searge);
-			if (fieldEntry != null) {
-				return fieldEntry.side();
-			}
-		} else if (searge.startsWith("func_")) {
-			var methodEntry = mcpMapping.methods().get(searge);
-			if (methodEntry != null) {
-				return methodEntry.side();
-			}
-		}
-		return 0;
-	}
-
-	private static int lookupParamSide(McpMapping mcpMapping, LocalVariableEntry localEntry) {
-		var paramMappingEntry = mcpMapping.params().get(localEntry.getName());
-		if (paramMappingEntry == null) {
-			return 0;
-		}
-		return paramMappingEntry.side();
+		progressListener.step(2, "Done");
 	}
 
 	private static void writeZipEntry(ZipOutputStream zos, String name, String content) throws IOException {
