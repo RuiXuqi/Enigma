@@ -7,7 +7,6 @@ import cuchaz.enigma.translation.mapping.MappingDelta;
 import cuchaz.enigma.translation.mapping.serde.MappingParseException;
 import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
-import cuchaz.enigma.translation.mapping.tree.HashEntryTree;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
 import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
@@ -21,10 +20,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 
 /**
  * @author ZZZank
@@ -40,24 +42,59 @@ public abstract class McpMappingIO {
 		var mcpMapping = new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
 		var tree = new McpMappingTree(mcpMapping);
 
+		var csvFormat = CSVFormat.DEFAULT.builder()
+				.setSkipHeaderRecord(true)
+				.get();
+
 		progressListener.init(4, "Init");
 		try (ZipFile zip = new ZipFile(path.toFile())) {
-			forEachLine(zip, "fields.csv", line -> {
-				var parts = line.split(",", 4);
-				mcpMapping.addField(parts[0], parts[1], Integer.parseInt(parts[2]), parts[3]);
-			});
+			try (var reader = openZipEntry(zip, "fields.csv");
+				 var parser = CSVParser.parse(reader, csvFormat)) {
+				int searge = parser.getHeaderMap().get("searge");
+				int name = parser.getHeaderMap().get("name");
+				int side = parser.getHeaderMap().get("side");
+				int desc = parser.getHeaderMap().get("desc");
+				for (var record : parser) {
+					mcpMapping.addField(
+							record.get(searge),
+							record.get(name),
+							Integer.parseInt(record.get(side)),
+							record.get(desc)
+					);
+				}
+			}
 			progressListener.step(1, "Field reading done");
 
-			forEachLine(zip, "methods.csv", line -> {
-				var parts = line.split(",", 4);
-				mcpMapping.addMethod(parts[0], parts[1], Integer.parseInt(parts[2]), parts[3]);
-			});
+			try (var reader = openZipEntry(zip, "methods.csv");
+				 var parser = CSVParser.parse(reader, csvFormat)) {
+				int searge = parser.getHeaderMap().get("searge");
+				int name = parser.getHeaderMap().get("name");
+				int side = parser.getHeaderMap().get("side");
+				int desc = parser.getHeaderMap().get("desc");
+				for (var record : parser) {
+					mcpMapping.addMethod(
+							record.get(searge),
+							record.get(name),
+							Integer.parseInt(record.get(side)),
+							record.get(desc)
+					);
+				}
+			}
 			progressListener.step(2, "Method reading done");
 
-			forEachLine(zip, "params.csv", line -> {
-				var parts = line.split(",", 3);
-				mcpMapping.addParam(parts[0], parts[1], Integer.parseInt(parts[2]));
-			});
+			try (var reader = openZipEntry(zip, "params.csv");
+				 var parser = CSVParser.parse(reader, csvFormat)) {
+				int param = parser.getHeaderMap().get("param");
+				int name = parser.getHeaderMap().get("name");
+				int side = parser.getHeaderMap().get("side");
+				for (var record : parser) {
+					mcpMapping.addParam(
+							record.get(param),
+							record.get(name),
+							Integer.parseInt(record.get(side))
+					);
+				}
+			}
 			progressListener.step(3, "Param reading done");
 		}
 
@@ -99,11 +136,9 @@ public abstract class McpMappingIO {
 		return tree;
 	}
 
-	private static void forEachLine(ZipFile zip, String path, Consumer<String> action) throws IOException {
+	private static BufferedReader openZipEntry(ZipFile zip, String path) throws IOException {
 		var inputStream = zip.getInputStream(zip.getEntry(path));
-		try (var reader = new BufferedReader(new InputStreamReader(inputStream))) {
-			reader.lines().skip(1).forEach(action);
-		}
+		return new BufferedReader(new InputStreamReader(inputStream));
 	}
 
 	public static void write(
@@ -115,41 +150,47 @@ public abstract class McpMappingIO {
 	) {
 		progressListener.init(3, "Writing MCP mappings");
 
+		var fieldMethodFormat = CSVFormat.DEFAULT.builder()
+				.setHeader("searge", "name", "side", "desc")
+				.get();
+		var paramFormat = CSVFormat.DEFAULT.builder()
+				.setHeader("param", "name", "side")
+				.get();
+
 		var fields = new StringBuilder();
 		var methods = new StringBuilder();
 		var params = new StringBuilder();
 
-		// CSV headers
-		fields.append("searge,name,side,desc\n");
-		methods.append("searge,name,side,desc\n");
-		params.append("param,name,side\n");
-
 		var mcpMapping = ((McpMappingTree) mappings).getMcpMapping();
 
-		mappings.getAllEntries().forEach(entry -> {
-			var mapping = mappings.get(entry);
-			if (mapping == null || mapping.targetName() == null) {
-				return;
-			}
+		try (var fieldPrinter = new CSVPrinter(fields, fieldMethodFormat);
+			 var methodPrinter = new CSVPrinter(methods, fieldMethodFormat);
+			 var paramPrinter = new CSVPrinter(params, paramFormat)) {
 
-			if (entry instanceof FieldEntry) {
-				var comment = mapping.javadoc() != null ? mapping.javadoc() : "";
-				int side = lookupSide(mcpMapping, entry.getName());
-				fields.append(entry.getName()).append(',')
-						.append(mapping.targetName()).append(',').append(side).append(',')
-						.append(comment).append('\n');
-			} else if (entry instanceof MethodEntry) {
-				var comment = mapping.javadoc() != null ? mapping.javadoc() : "";
-				int side = lookupSide(mcpMapping, entry.getName());
-				methods.append(entry.getName()).append(',')
-						.append(mapping.targetName()).append(',').append(side).append(',')
-						.append(comment).append('\n');
-			} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
-				int side = lookupParamSide(mcpMapping, localEntry);
-				params.append(localEntry.getName()).append(',')
-						.append(mapping.targetName()).append(',').append(side).append('\n');
-			}
-		});
+			mappings.getAllEntries().forEach(entry -> {
+				var mapping = mappings.get(entry);
+				if (mapping == null || mapping.targetName() == null) {
+					return;
+				}
+
+				try {
+					if (entry instanceof FieldEntry) {
+						int side = lookupSide(mcpMapping, entry.getName());
+						fieldPrinter.printRecord(entry.getName(), mapping.targetName(), side, mapping.javadoc());
+					} else if (entry instanceof MethodEntry) {
+						int side = lookupSide(mcpMapping, entry.getName());
+						methodPrinter.printRecord(entry.getName(), mapping.targetName(), side, mapping.javadoc());
+					} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
+						int side = lookupParamSide(mcpMapping, localEntry);
+						paramPrinter.printRecord(localEntry.getName(), mapping.targetName(), side);
+					}
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 		progressListener.step(1, "Entries collected");
 
 		try (var fos = new FileOutputStream(path.toFile());

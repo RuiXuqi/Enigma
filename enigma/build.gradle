@@ -3,6 +3,9 @@ configurations {
 }
 
 dependencies {
+	// Source: https://mvnrepository.com/artifact/org.apache.commons/commons-csv
+	implementation("org.apache.commons:commons-csv:1.14.1")
+
 	implementation 'org.ow2.asm:asm:9.9.1'
 	implementation 'org.ow2.asm:asm-commons:9.9.1'
 	implementation 'org.ow2.asm:asm-tree:9.9.1'
