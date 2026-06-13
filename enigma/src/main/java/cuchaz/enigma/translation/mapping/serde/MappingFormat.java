@@ -27,6 +27,8 @@ import cuchaz.enigma.utils.I18n;
 
 public enum MappingFormat {
 	MCP(FileType.ZIP, null) {
+		private final McpMappingIO io = new McpMappingIO();
+
 		@Override
 		public EntryTree<EntryMapping> read(
 				Path path,
@@ -34,7 +36,7 @@ public enum MappingFormat {
 				MappingSaveParameters saveParameters,
 				JarIndex index
 		) throws IOException, MappingParseException {
-			return McpMappingIO.read(path, progressListener, saveParameters, index);
+			return io.read(path, progressListener, saveParameters, index);
 		}
 
 		@Override
@@ -45,12 +47,12 @@ public enum MappingFormat {
 				ProgressListener progressListener,
 				MappingSaveParameters saveParameters
 		) {
-			McpMappingIO.write(mappings, delta, path, progressListener, saveParameters);
+			io.write(mappings, delta, path, progressListener, saveParameters);
 		}
 
 		@Override
 		public boolean isWritable() {
-			return false;
+			return true;
 		}
 	},
 	ENIGMA_FILE(FileType.MAPPING, net.fabricmc.mappingio.format.MappingFormat.ENIGMA_FILE),

@@ -7,6 +7,7 @@ import cuchaz.enigma.translation.mapping.MappingDelta;
 import cuchaz.enigma.translation.mapping.serde.MappingParseException;
 import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
+import cuchaz.enigma.translation.mapping.tree.HashEntryTree;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
 import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
@@ -31,25 +32,31 @@ import org.apache.commons.csv.CSVPrinter;
 /**
  * @author ZZZank
  */
-public abstract class McpMappingIO {
+public class McpMappingIO {
+	private volatile McpMapping mcpMapping;
 
-	public static EntryTree<EntryMapping> read(
+	public EntryTree<EntryMapping> read(
 			Path path,
 			ProgressListener progressListener,
 			MappingSaveParameters saveParameters,
 			JarIndex index
 	) throws IOException, MappingParseException {
-		var mcpMapping = new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
-		var tree = new McpMappingTree(mcpMapping);
+		mcpMapping = new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+		var tree = new HashEntryTree<EntryMapping>();
 
-		var csvFormat = CSVFormat.DEFAULT.builder()
+		var fieldMethodFormat = CSVFormat.DEFAULT.builder()
 				.setSkipHeaderRecord(true)
+				.setHeader("searge", "name", "side", "desc")
+				.get();
+		var paramFormat = CSVFormat.DEFAULT.builder()
+				.setSkipHeaderRecord(true)
+				.setHeader("param", "name", "side")
 				.get();
 
 		progressListener.init(4, "Init");
 		try (ZipFile zip = new ZipFile(path.toFile())) {
 			try (var reader = openZipEntry(zip, "fields.csv");
-				 var parser = CSVParser.parse(reader, csvFormat)) {
+				 var parser = CSVParser.parse(reader, fieldMethodFormat)) {
 				int searge = parser.getHeaderMap().get("searge");
 				int name = parser.getHeaderMap().get("name");
 				int side = parser.getHeaderMap().get("side");
@@ -66,7 +73,7 @@ public abstract class McpMappingIO {
 			progressListener.step(1, "Field reading done");
 
 			try (var reader = openZipEntry(zip, "methods.csv");
-				 var parser = CSVParser.parse(reader, csvFormat)) {
+				 var parser = CSVParser.parse(reader, fieldMethodFormat)) {
 				int searge = parser.getHeaderMap().get("searge");
 				int name = parser.getHeaderMap().get("name");
 				int side = parser.getHeaderMap().get("side");
@@ -83,7 +90,7 @@ public abstract class McpMappingIO {
 			progressListener.step(2, "Method reading done");
 
 			try (var reader = openZipEntry(zip, "params.csv");
-				 var parser = CSVParser.parse(reader, csvFormat)) {
+				 var parser = CSVParser.parse(reader, paramFormat)) {
 				int param = parser.getHeaderMap().get("param");
 				int name = parser.getHeaderMap().get("name");
 				int side = parser.getHeaderMap().get("side");
@@ -141,7 +148,7 @@ public abstract class McpMappingIO {
 		return new BufferedReader(new InputStreamReader(inputStream));
 	}
 
-	public static void write(
+	public void write(
 			EntryTree<EntryMapping> mappings,
 			MappingDelta<EntryMapping> delta,
 			Path path,
@@ -160,8 +167,6 @@ public abstract class McpMappingIO {
 		var fields = new StringBuilder();
 		var methods = new StringBuilder();
 		var params = new StringBuilder();
-
-		var mcpMapping = ((McpMappingTree) mappings).getMcpMapping();
 
 		try (var fieldPrinter = new CSVPrinter(fields, fieldMethodFormat);
 			 var methodPrinter = new CSVPrinter(methods, fieldMethodFormat);
@@ -211,33 +216,21 @@ public abstract class McpMappingIO {
 			if (fieldEntry != null) {
 				return fieldEntry.side();
 			}
-		}
-		var methodEntry = mcpMapping.methods().get(searge);
-		if (methodEntry != null) {
-			return methodEntry.side();
+		} else if (searge.startsWith("func_")) {
+			var methodEntry = mcpMapping.methods().get(searge);
+			if (methodEntry != null) {
+				return methodEntry.side();
+			}
 		}
 		return 0;
 	}
 
 	private static int lookupParamSide(McpMapping mcpMapping, LocalVariableEntry localEntry) {
-		var parentMethod = localEntry.getParent();
-		String methodName = parentMethod.getName();
-		if (!methodName.startsWith("func_")) {
+		var paramMappingEntry = mcpMapping.params().get(localEntry.getName());
+		if (paramMappingEntry == null) {
 			return 0;
 		}
-		String methodIndex = methodName.substring("func_".length()).split("_")[0];
-		var paramList = mcpMapping.paramsByMethodIndex().get(methodIndex);
-		if (paramList == null) {
-			return 0;
-		}
-		int targetIndex = localEntry.getIndex();
-		for (var param : paramList) {
-			String[] idxParts = param.param().substring("p_".length()).split("_");
-			if (Integer.parseInt(idxParts[1]) == targetIndex) {
-				return param.side();
-			}
-		}
-		return 0;
+		return paramMappingEntry.side();
 	}
 
 	private static void writeZipEntry(ZipOutputStream zos, String name, String content) throws IOException {
