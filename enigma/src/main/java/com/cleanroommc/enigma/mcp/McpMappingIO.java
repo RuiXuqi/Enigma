@@ -210,6 +210,16 @@ public class McpMappingIO {
 					params.put(new ParamKey(methodIndex, localEntry.getIndex()), new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side));
 				}
 			});
+
+			if (mcpMapping != null) {
+				mcpMapping.fields().forEach(fields::putIfAbsent);
+				mcpMapping.methods().forEach(methods::putIfAbsent);
+//				mcpMapping.params().forEach((k, v) -> {
+//					var parts = k.split("_");
+//					params.putIfAbsent(new ParamKey(parts[1], Integer.parseInt(parts[2])), v);
+//				});
+			}
+
 			for (var entry : fields.values()) {
 				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc());
 			}
