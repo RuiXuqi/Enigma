@@ -2,10 +2,12 @@ package cuchaz.enigma.translation.mapping.serde;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 
 import com.cleanroommc.enigma.mcp.McpMappingIO;
 
@@ -27,6 +29,43 @@ import cuchaz.enigma.utils.I18n;
 
 public enum MappingFormat {
 	MCP(FileType.ZIP, null) {
+		private final McpMappingIO io = new McpMappingIO();
+
+		@Override
+		public EntryTree<EntryMapping> read(
+				Path path,
+				ProgressListener progressListener,
+				MappingSaveParameters saveParameters,
+				JarIndex index
+		) throws IOException, MappingParseException {
+			// see: jdk.nio.zipfs.ZipFileSystemProvider
+			try (FileSystem fileSystem = FileSystems.newFileSystem(path, Map.of("accessMode", "readOnly"))) {
+				return io.read(fileSystem.getPath("/"), progressListener, saveParameters, index);
+			}
+		}
+
+		@Override
+		public void write(
+				EntryTree<EntryMapping> mappings,
+				MappingDelta<EntryMapping> delta,
+				Path path,
+				ProgressListener progressListener,
+				MappingSaveParameters saveParameters
+		) {
+			// see: jdk.nio.zipfs.ZipFileSystemProvider
+			try (FileSystem fileSystem = FileSystems.newFileSystem(path, Map.of("accessMode", "readWrite"))) {
+				io.write(mappings, delta, fileSystem.getPath("/"), progressListener, saveParameters);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}
+
+		@Override
+		public boolean isWritable() {
+			return true;
+		}
+	},
+	MCP_FOLDER(FileType.DIRECTORY, null) {
 		private final McpMappingIO io = new McpMappingIO();
 
 		@Override
