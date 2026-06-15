@@ -1,17 +1,5 @@
 package com.cleanroommc.enigma.mcp;
 
-import cuchaz.enigma.ProgressListener;
-import cuchaz.enigma.analysis.index.JarIndex;
-import cuchaz.enigma.translation.mapping.EntryMapping;
-import cuchaz.enigma.translation.mapping.MappingDelta;
-import cuchaz.enigma.translation.mapping.serde.MappingParseException;
-import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
-import cuchaz.enigma.translation.mapping.tree.EntryTree;
-import cuchaz.enigma.translation.mapping.tree.HashEntryTree;
-import cuchaz.enigma.translation.representation.entry.FieldEntry;
-import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
-import cuchaz.enigma.translation.representation.entry.MethodEntry;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -25,6 +13,18 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 
+import cuchaz.enigma.ProgressListener;
+import cuchaz.enigma.analysis.index.JarIndex;
+import cuchaz.enigma.translation.mapping.EntryMapping;
+import cuchaz.enigma.translation.mapping.MappingDelta;
+import cuchaz.enigma.translation.mapping.serde.MappingParseException;
+import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
+import cuchaz.enigma.translation.mapping.tree.EntryTree;
+import cuchaz.enigma.translation.mapping.tree.HashEntryTree;
+import cuchaz.enigma.translation.representation.entry.FieldEntry;
+import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
+import cuchaz.enigma.translation.representation.entry.MethodEntry;
+
 /**
  * @author ZZZank
  */
@@ -37,7 +37,8 @@ public class McpMappingIO {
 			MappingSaveParameters saveParameters,
 			JarIndex index
 	) throws IOException, MappingParseException {
-		mcpMapping = new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+		mcpMapping =
+				new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
 		var tree = new HashEntryTree<EntryMapping>();
 
 		var fieldMethodFormat = CSVFormat.DEFAULT.builder()
@@ -130,12 +131,16 @@ public class McpMappingIO {
 						// method name: func_<index>_<notch_name>_
 						var methodMappingEntry = mcpMapping.methods().get(name);
 						if (methodMappingEntry != null) {
-							tree.insert(methodEntry, new EntryMapping(methodMappingEntry.name(), methodMappingEntry.desc()));
+							tree.insert(
+									methodEntry,
+									new EntryMapping(methodMappingEntry.name(), methodMappingEntry.desc())
+							);
 						}
 						methodIndex = name.substring("func_".length()).split("_", 2)[0];
 					} else if (name.equals("<init>")) {
 						// constructor name: <init>
-						var constructorIndex = mcpMapping.constructors().get(classEntry.getFullName() + methodEntry.getDescriptor());
+						var constructorIndex =
+								mcpMapping.constructors().get(classEntry.getFullName() + methodEntry.getDescriptor());
 						if (constructorIndex != null) {
 							methodIndex = "i" + constructorIndex.index();
 						}
@@ -184,8 +189,8 @@ public class McpMappingIO {
 		var paramsWriter = new StringBuilder();
 
 		try (var fieldPrinter = new CSVPrinter(fieldsWriter, fieldMethodFormat);
-			 var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
-			 var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
+		     var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
+		     var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
 
 			record ParamKey(String methodIndex, String localIndex) {
 			}
@@ -206,12 +211,28 @@ public class McpMappingIO {
 					var fieldEntry = mcpMapping.fields().get(entry.getName());
 					int side = fieldEntry != null ? fieldEntry.side() : 0;
 
-					fields.put(entry.getName(), new McpMapping.FieldMappingEntry(entry.getName(), mapping.targetName(), side, mapping.javadoc()));
+					fields.put(
+							entry.getName(),
+							new McpMapping.FieldMappingEntry(
+									entry.getName(),
+									mapping.targetName(),
+									side,
+									mapping.javadoc()
+							)
+					);
 				} else if (entry instanceof MethodEntry) {
 					var methodEntry = mcpMapping.methods().get(entry.getName());
 					int side = methodEntry != null ? methodEntry.side() : 0;
 
-					methods.put(entry.getName(), new McpMapping.MethodMappingEntry(entry.getName(), mapping.targetName(), side, mapping.javadoc()));
+					methods.put(
+							entry.getName(),
+							new McpMapping.MethodMappingEntry(
+									entry.getName(),
+									mapping.targetName(),
+									side,
+									mapping.javadoc()
+							)
+					);
 				} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
 					// for whatever reason, localEntry.getName() gives remapped name, so build param name ourselves: p_<method_index>_<index>_
 					var methodName = localEntry.getParent().getName();
@@ -232,7 +253,10 @@ public class McpMappingIO {
 					var paramMappingEntry = mcpMapping.params().get(srgParamName);
 					int side = paramMappingEntry == null ? 0 : paramMappingEntry.side();
 
-					params.put(new ParamKey(methodIndex, String.valueOf(localEntry.getIndex())), new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side));
+					params.put(
+							new ParamKey(methodIndex, String.valueOf(localEntry.getIndex())),
+							new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side)
+					);
 				}
 			});
 
@@ -250,7 +274,12 @@ public class McpMappingIO {
 				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc().replace("\n", "\\n"));
 			}
 			for (var entry : methods.values()) {
-				methodPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc().replace("\n", "\\n"));
+				methodPrinter.printRecord(
+						entry.searge(),
+						entry.name(),
+						entry.side(),
+						entry.desc().replace("\n", "\\n")
+				);
 			}
 			for (var entry : params.values()) {
 				paramPrinter.printRecord(entry.param(), entry.name(), entry.side());

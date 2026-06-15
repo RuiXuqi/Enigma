@@ -9,11 +9,11 @@ import java.util.Map;
  * @author ZZZank
  */
 public record McpMapping(
-	Map<String, ConstructorIndex> constructors,
-    Map<String, FieldMappingEntry> fields,
-    Map<String, MethodMappingEntry> methods,
-    Map<String, ParamMappingEntry> params,
-	Map<String, List<ParamMappingEntry>> paramsByMethodIndex
+		Map<String, ConstructorIndex> constructors,
+		Map<String, FieldMappingEntry> fields,
+		Map<String, MethodMappingEntry> methods,
+		Map<String, ParamMappingEntry> params,
+		Map<String, List<ParamMappingEntry>> paramsByMethodIndex
 ) {
 	public FieldMappingEntry addField(String searge, String name, int side, String desc) {
 		return fields.put(searge, new FieldMappingEntry(searge, name, side, desc));
@@ -25,7 +25,10 @@ public record McpMapping(
 
 	public ParamMappingEntry addParam(String param, String name, int side) {
 		var entry = new ParamMappingEntry(param, name, side);
-		paramsByMethodIndex.computeIfAbsent(param.substring("p_".length()).split("_", 2)[0], ignored -> new ArrayList<>()).add(entry);
+		paramsByMethodIndex.computeIfAbsent(
+				param.substring("p_".length()).split("_", 2)[0],
+				ignored -> new ArrayList<>()
+		).add(entry);
 		return params.put(param, entry);
 	}
 

@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.cleanroommc.enigma.mcp.McpMappingIO;
-
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.MappingWriter;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
