@@ -61,7 +61,7 @@ public class McpMappingIO {
 						record.get(searge),
 						record.get(name),
 						Integer.parseInt(record.get(side)),
-						record.get(desc)
+						record.get(desc).replace("\\n", "\n")
 				);
 			}
 		}
@@ -78,7 +78,7 @@ public class McpMappingIO {
 						record.get(searge),
 						record.get(name),
 						Integer.parseInt(record.get(side)),
-						record.get(desc)
+						record.get(desc).replace("\\n", "\n")
 				);
 			}
 		}
@@ -247,10 +247,10 @@ public class McpMappingIO {
 			}
 
 			for (var entry : fields.values()) {
-				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc());
+				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc().replace("\n", "\\n"));
 			}
 			for (var entry : methods.values()) {
-				methodPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc());
+				methodPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc().replace("\n", "\\n"));
 			}
 			for (var entry : params.values()) {
 				paramPrinter.printRecord(entry.param(), entry.name(), entry.side());
