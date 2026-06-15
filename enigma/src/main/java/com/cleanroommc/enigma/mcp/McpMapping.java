@@ -5,9 +5,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * @param constructors key is full method signature
  * @author ZZZank
  */
 public record McpMapping(
+	Map<String, ConstructorIndex> constructors,
     Map<String, FieldMappingEntry> fields,
     Map<String, MethodMappingEntry> methods,
     Map<String, ParamMappingEntry> params,
@@ -34,5 +36,8 @@ public record McpMapping(
 	}
 
 	public record ParamMappingEntry(String param, String name, int side) {
+	}
+
+	public record ConstructorIndex(String index, String className, String descriptor) {
 	}
 }

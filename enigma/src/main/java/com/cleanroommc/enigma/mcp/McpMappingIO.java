@@ -43,7 +43,7 @@ public class McpMappingIO {
 			MappingSaveParameters saveParameters,
 			JarIndex index
 	) throws IOException, MappingParseException {
-		mcpMapping = new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+		mcpMapping = new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
 		var tree = new HashEntryTree<EntryMapping>();
 
 		var fieldMethodFormat = CSVFormat.DEFAULT.builder()
@@ -55,7 +55,7 @@ public class McpMappingIO {
 				.setHeader("param", "name", "side")
 				.get();
 
-		progressListener.init(4, "Init");
+		progressListener.init(5, "Init");
 		try (ZipFile zip = new ZipFile(path.toFile())) {
 			try (var reader = openZipEntry(zip, "fields.csv");
 				 var parser = CSVParser.parse(reader, fieldMethodFormat)) {
@@ -105,6 +105,20 @@ public class McpMappingIO {
 				}
 			}
 			progressListener.step(3, "Param reading done");
+
+			try (var reader = openZipEntry(zip, "constructors.txt")) {
+				String line;
+				while ((line = reader.readLine()) != null) {
+					var parts = line.split(" ", 3);
+					var className = parts[1];
+					var descriptor = parts[2];
+					mcpMapping.constructors().put(
+							className + descriptor,
+							new McpMapping.ConstructorIndex(parts[0], className, descriptor)
+					);
+				}
+			}
+			progressListener.step(4, "Constructor reading done");
 		}
 
 		for (var entriesByClass : index.getChildrenByClass().entrySet()) {
@@ -113,20 +127,32 @@ public class McpMappingIO {
 			for (var entry : entriesByClass.getValue()) {
 				// entry.getParent() gives class entry
 				var name = entry.getName();
-				if (name.startsWith("field_") && entry instanceof FieldEntry fieldEntry) {
+				if (entry instanceof FieldEntry fieldEntry && name.startsWith("field_")) {
 					var fieldMappingEntry = mcpMapping.fields().get(name);
 					if (fieldMappingEntry != null) {
 						tree.insert(fieldEntry, new EntryMapping(fieldMappingEntry.name(), fieldMappingEntry.desc()));
 					}
-				}
-				if (name.startsWith("func_") && entry instanceof MethodEntry methodEntry) {
-					var methodMappingEntry = mcpMapping.methods().get(name);
-					if (methodMappingEntry != null) {
-						tree.insert(methodEntry, new EntryMapping(methodMappingEntry.name(), methodMappingEntry.desc()));
+				} else if (entry instanceof MethodEntry methodEntry) {
+					String methodIndex = null;
+					if (name.startsWith("func_")) {
+						// method name: func_<index>_<notch_name>_
+						var methodMappingEntry = mcpMapping.methods().get(name);
+						if (methodMappingEntry != null) {
+							tree.insert(methodEntry, new EntryMapping(methodMappingEntry.name(), methodMappingEntry.desc()));
+						}
+						methodIndex = name.substring("func_".length()).split("_", 2)[0];
+					} else if (name.equals("<init>")) {
+						// constructor name: <init>
+						var constructorIndex = mcpMapping.constructors().get(classEntry.getFullName() + methodEntry.getDescriptor());
+						if (constructorIndex != null) {
+							methodIndex = "i" + constructorIndex.index();
+						}
 					}
 
-					// method name: func_<index>_<notch_name>[_]
-					var methodIndex = name.substring("func_".length()).split("_")[0];
+					if (methodIndex == null) {
+						continue;
+					}
+
 					var params = mcpMapping.paramsByMethodIndex().getOrDefault(methodIndex, List.of());
 					for (var paramMapping : params) {
 						// param key format: p_<method_index>_<index>_
@@ -201,7 +227,19 @@ public class McpMappingIO {
 					methods.put(entry.getName(), new McpMapping.MethodMappingEntry(entry.getName(), mapping.targetName(), side, mapping.javadoc()));
 				} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
 					// for whatever reason, localEntry.getName() gives remapped name, so build param name ourselves: p_<method_index>_<index>_
-					var methodIndex = localEntry.getParent().getName().substring("func_".length()).split("_", 2)[0];
+					var methodName = localEntry.getParent().getName();
+					String methodIndex;
+					if (methodName.equals("<init>")) {
+						var methodEntry = localEntry.getParent();
+						var constructorIndex = mcpMapping.constructors()
+								.get(methodEntry.getParent().getFullName() + methodEntry.getDescriptor());
+						methodIndex = "i" + constructorIndex.index();
+					} else if (methodName.startsWith("func_")) {
+						methodIndex = methodName.substring("func_".length()).split("_", 2)[0];
+					} else {
+						return;
+					}
+
 					var srgParamName = "p_" + methodIndex + "_" + localEntry.getIndex() + "_";
 
 					var paramMappingEntry = mcpMapping.params().get(srgParamName);
