@@ -1,16 +1,17 @@
 package cuchaz.enigma.analysis.index;
 
-import cuchaz.enigma.Enigma;
-import cuchaz.enigma.translation.representation.AccessFlags;
-import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
-import cuchaz.enigma.translation.representation.entry.MethodDefEntry;
-
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
+import cuchaz.enigma.Enigma;
+import cuchaz.enigma.translation.representation.AccessFlags;
+import cuchaz.enigma.translation.representation.TypeDescriptor;
 import cuchaz.enigma.translation.representation.entry.ClassDefEntry;
 import cuchaz.enigma.translation.representation.entry.FieldDefEntry;
+import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
+import cuchaz.enigma.translation.representation.entry.MethodDefEntry;
 
 public class IndexClassVisitor extends ClassVisitor {
 	private final JarIndexer indexer;
@@ -41,25 +42,40 @@ public class IndexClassVisitor extends ClassVisitor {
 		MethodDefEntry methodEntry = MethodDefEntry.parse(classEntry, access, name, desc, signature);
 		indexer.indexMethod(methodEntry);
 
-		return new IndexMethodVisitor(methodEntry, indexer);
+		var mv = super.visitMethod(access, name, desc, signature, exceptions);
+		return new IndexMethodVisitor(methodEntry, indexer, mv);
 	}
 
 	private static class IndexMethodVisitor extends MethodVisitor {
 		private final MethodDefEntry method;
 		private final JarIndexer indexer;
-		private int paramIndex;
+		private final int paramIndexStart;
+		private final int paramCountEnd;
 
-		private IndexMethodVisitor(MethodDefEntry method, JarIndexer indexer) {
-			super(Enigma.ASM_VERSION);
+		private IndexMethodVisitor(MethodDefEntry method, JarIndexer indexer, MethodVisitor mv) {
+			super(Enigma.ASM_VERSION, mv);
 			this.method = method;
 			this.indexer = indexer;
+			this.paramIndexStart = method.getAccess().isStatic() ? 0 : 1;
+			this.paramCountEnd = paramIndexStart + method.getDesc()
+					.getArgumentDescs()
+					.stream()
+					.mapToInt(TypeDescriptor::getSize)
+					.sum();
 		}
 
 		@Override
-		public void visitParameter(String name, int access) {
-			LocalVariableEntry parameterEntry = new LocalVariableEntry(method, paramIndex, name, true, null);
-			indexer.indexParameter(parameterEntry, new AccessFlags(access));
-			paramIndex++;
+		public void visitLocalVariable(String name,
+				String descriptor,
+				String signature,
+				Label start,
+				Label end,
+				int index) {
+			if (index >= paramIndexStart && index < paramCountEnd) {
+				LocalVariableEntry parameterEntry = new LocalVariableEntry(method, index, name, true, null);
+				indexer.indexParameter(parameterEntry, new AccessFlags(0));
+			}
+			super.visitLocalVariable(name, descriptor, signature, start, end, index);
 		}
 	}
 }
