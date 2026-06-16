@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import io.modelcontextprotocol.json.McpJsonDefaults;
@@ -516,7 +517,7 @@ public class McpTools {
 	private McpServerFeatures.SyncToolSpecification findUnmapped() {
 		var jsonMapper = McpJsonDefaults.getMapper();
 		String schema = """
-			{"type":"object","properties":{"entry_type":{"type":"string","description":"Type of entries: class, method, field, or all","default":"all"},"class_filter":{"type":"string","description":"Optional obfuscated class name prefix filter"},"limit":{"type":"number","description":"Maximum results","default":50}},"required":[]}
+			{"type":"object","properties":{"entry_type":{"type":"string","description":"Type of entries: class, method, field, param, or all"},"class_filter":{"type":"string","description":"Optional obfuscated class name prefix filter"},"limit":{"type":"number","description":"Maximum results","default":50}},"required":["entry_type"]}
 			""";
 
 		var tool = toolBuilder("find_unmapped", "Find entries that have no deobfuscated mapping yet")
@@ -525,7 +526,7 @@ public class McpTools {
 
 		return new McpServerFeatures.SyncToolSpecification(tool, (exchange, request) -> {
 			Map<String, Object> args = request.arguments();
-			String entryType = args.containsKey("entry_type") ? args.get("entry_type").toString().toLowerCase() : "all";
+			String entryType = args.get("entry_type").toString().toLowerCase();
 			String classFilter = getArg(args, "class_filter");
 			int limit = args.containsKey("limit") ? ((Number) args.get("limit")).intValue() : DEFAULT_UNMAPPED_LIMIT;
 
@@ -533,17 +534,22 @@ public class McpTools {
 			StringBuilder sb = new StringBuilder();
 
 			Stream<Entry<?>> stream = switch (entryType) {
-				case "class" -> entryIndex.getClasses().stream().map(e -> (Entry<?>) e);
-				case "method" -> entryIndex.getMethods().stream().map(e -> (Entry<?>) e);
-				case "field" -> entryIndex.getFields().stream().map(e -> (Entry<?>) e);
-				default -> Stream.concat(
+				case "class" -> entryIndex.getClasses().stream().map(Function.identity());
+				case "method" -> entryIndex.getMethods().stream().map(Function.identity());
+				case "field" -> entryIndex.getFields().stream().map(Function.identity());
+				case "param" -> entryIndex.getParameters().stream().map(Function.identity());
+				case "all" -> Stream.concat(
 					entryIndex.getClasses().stream(),
 					Stream.concat(
 						entryIndex.getMethods().stream(),
 						entryIndex.getFields().stream()
 					)
 				);
+				default -> null;
 			};
+			if (stream == null) {
+				return error(String.format("Unknown entry_type '%s', valid: ", entryType));
+			}
 
 			if (classFilter != null) {
 				String filter = normalizeClassName(classFilter);
