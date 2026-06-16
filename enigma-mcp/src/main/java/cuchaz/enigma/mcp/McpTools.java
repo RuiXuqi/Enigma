@@ -115,13 +115,15 @@ public class McpTools {
 		if (entry instanceof ClassEntry ce) {
 			sb.append("class ").append(ce.getFullName());
 		} else if (entry instanceof FieldEntry fe) {
-			sb.append("field ").append(fe.getParent().getFullName()).append(".").append(fe.getName());
-			sb.append(" ").append(fe.getDesc());
+			sb.append("field ").append(fe.getName()).append(" ").append(fe.getDesc());
+			sb.append(" @").append(fe.getParent().getFullName());
 		} else if (entry instanceof MethodEntry me) {
-			sb.append("method ").append(me.getParent().getFullName()).append(".").append(me.getName());
-			sb.append(" ").append(me.getDesc());
+			sb.append("method ").append(me.getName()).append(me.getDesc());
+			sb.append(" @").append(me.getParent().getFullName());
 		} else if (entry instanceof LocalVariableEntry lve) {
-			sb.append("param ").append(lve.getParent().getFullName()).append("#").append(lve.getIndex());
+			sb.append("param ").append(lve.getName());
+			MethodEntry method = lve.getParent();
+			sb.append(" @").append(method.getParent().getFullName()).append("#").append(method.getName()).append(method.getDesc());
 		} else {
 			sb.append(entry.getFullName());
 		}
