@@ -73,6 +73,7 @@ public class MenuBar {
 	private final JMenuItem searchClassItem = new JMenuItem(GuiUtil.CLASS_ICON);
 	private final JMenuItem searchMethodItem = new JMenuItem(GuiUtil.METHOD_ICON);
 	private final JMenuItem searchFieldItem = new JMenuItem(GuiUtil.FIELD_ICON);
+	private final JMenuItem searchParamItem = new JMenuItem();
 
 	private final JMenu collabMenu = new JMenu();
 	private final JMenuItem connectItem = new JMenuItem();
@@ -130,6 +131,7 @@ public class MenuBar {
 		this.searchMenu.add(this.searchClassItem);
 		this.searchMenu.add(this.searchMethodItem);
 		this.searchMenu.add(this.searchFieldItem);
+		this.searchMenu.add(this.searchParamItem);
 		ui.add(this.searchMenu);
 
 		this.collabMenu.add(this.connectItem);
@@ -144,6 +146,7 @@ public class MenuBar {
 		this.searchClassItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_1, InputEvent.CTRL_DOWN_MASK));
 		this.searchMethodItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_2, InputEvent.CTRL_DOWN_MASK));
 		this.searchFieldItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_3, InputEvent.CTRL_DOWN_MASK));
+		this.searchParamItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_4, InputEvent.CTRL_DOWN_MASK));
 
 		this.jarOpenItem.addActionListener(_e -> this.onOpenJarClicked());
 		this.jarCloseItem.addActionListener(_e -> this.gui.getController().closeJar());
@@ -161,6 +164,7 @@ public class MenuBar {
 		this.searchClassItem.addActionListener(_e -> this.onSearchClicked(SearchDialog.Type.CLASS));
 		this.searchMethodItem.addActionListener(_e -> this.onSearchClicked(SearchDialog.Type.METHOD));
 		this.searchFieldItem.addActionListener(_e -> this.onSearchClicked(SearchDialog.Type.FIELD));
+		this.searchParamItem.addActionListener(_e -> this.onSearchClicked(SearchDialog.Type.PARAM));
 		this.connectItem.addActionListener(_e -> this.onConnectClicked());
 		this.startServerItem.addActionListener(_e -> this.onStartServerClicked());
 		this.aboutItem.addActionListener(_e -> AboutDialog.show(this.gui.getFrame()));
@@ -217,6 +221,7 @@ public class MenuBar {
 		this.searchClassItem.setText(I18n.translate("menu.search.class"));
 		this.searchMethodItem.setText(I18n.translate("menu.search.method"));
 		this.searchFieldItem.setText(I18n.translate("menu.search.field"));
+		this.searchParamItem.setText(I18n.translate("menu.search.param"));
 
 		this.collabMenu.setText(I18n.translate("menu.collab"));
 		this.connectItem.setText(I18n.translate("menu.collab.connect"));

@@ -51,6 +51,7 @@ import cuchaz.enigma.gui.util.GuiUtil;
 import cuchaz.enigma.gui.util.ScaleUtil;
 import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
+import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
 import cuchaz.enigma.translation.representation.entry.ParentedEntry;
 import cuchaz.enigma.utils.I18n;
@@ -168,9 +169,32 @@ public class SearchDialog {
 		final EntryIndex entryIndex = parent.getController().project.getJarIndex().getEntryIndex();
 
 		switch (type) {
-		case CLASS -> entryIndex.getClasses().parallelStream().filter(e -> !e.isInnerClass()).map(e -> SearchEntryImpl.from(e, parent.getController())).map(SearchUtil.Entry::from).sequential().forEach(su::add);
-		case METHOD -> entryIndex.getMethods().parallelStream().filter(e -> !e.isConstructor() && !entryIndex.getMethodAccess(e).isSynthetic()).map(e -> SearchEntryImpl.from(e, parent.getController())).map(SearchUtil.Entry::from).sequential().forEach(su::add);
-		case FIELD -> entryIndex.getFields().parallelStream().map(e -> SearchEntryImpl.from(e, parent.getController())).map(SearchUtil.Entry::from).sequential().forEach(su::add);
+			case CLASS -> entryIndex.getClasses()
+					.parallelStream()
+					.filter(e -> !e.isInnerClass())
+					.map(e -> SearchEntryImpl.from(e, parent.getController()))
+					.map(SearchUtil.Entry::from)
+					.sequential()
+					.forEach(su::add);
+			case METHOD -> entryIndex.getMethods()
+					.parallelStream()
+					.filter(e -> !e.isConstructor() && !entryIndex.getMethodAccess(e).isSynthetic())
+					.map(e -> SearchEntryImpl.from(e, parent.getController()))
+					.map(SearchUtil.Entry::from)
+					.sequential()
+					.forEach(su::add);
+			case FIELD -> entryIndex.getFields()
+					.parallelStream()
+					.map(e -> SearchEntryImpl.from(e, parent.getController()))
+					.map(SearchUtil.Entry::from)
+					.sequential()
+					.forEach(su::add);
+			case PARAM -> entryIndex.getParameters()
+					.parallelStream()
+					.map(e -> SearchEntryImpl.from(e, parent.getController()))
+					.map(SearchUtil.Entry::from)
+					.sequential()
+					.forEach(su::add);
 		}
 
 		updateList();
@@ -195,18 +219,21 @@ public class SearchDialog {
 		su.hit(e);
 		parent.getController().navigateTo(e.obf);
 
+		ClassEntry openTarget;
+
 		if (e.obf instanceof ClassEntry) {
-			if (e.deobf != null) {
-				parent.getDeobfPanel().deobfClasses.setSelectionClass((ClassEntry) e.deobf);
-			} else {
-				parent.getObfPanel().obfClasses.setSelectionClass((ClassEntry) e.obf);
-			}
+			openTarget = (ClassEntry) e.obf;
+		} else if (e.obf instanceof LocalVariableEntry) {
+			openTarget = (ClassEntry) e.obf.getParent().getParent();
 		} else {
-			if (e.deobf != null) {
-				parent.getDeobfPanel().deobfClasses.setSelectionClass((ClassEntry) e.deobf.getParent());
-			} else {
-				parent.getObfPanel().obfClasses.setSelectionClass((ClassEntry) e.obf.getParent());
-			}
+			// field and method
+			openTarget = (ClassEntry) e.obf.getParent();
+		}
+
+		if (e.deobf != null) {
+			parent.getDeobfPanel().deobfClasses.setSelectionClass(openTarget);
+		} else {
+			parent.getObfPanel().obfClasses.setSelectionClass(openTarget);
 		}
 	}
 
@@ -342,7 +369,8 @@ public class SearchDialog {
 	public enum Type {
 		CLASS("menu.search.class"),
 		METHOD("menu.search.method"),
-		FIELD("menu.search.field");
+		FIELD("menu.search.field"),
+		PARAM("menu.search.param");
 
 		private final String translationKey;
 
