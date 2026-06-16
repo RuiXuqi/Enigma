@@ -17,6 +17,10 @@ import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.analysis.index.EntryIndex;
 import cuchaz.enigma.analysis.index.JarIndex;
+import cuchaz.enigma.source.Decompiler;
+import cuchaz.enigma.source.DecompilerService;
+import cuchaz.enigma.source.Decompilers;
+import cuchaz.enigma.source.SourceSettings;
 import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
@@ -54,6 +58,7 @@ public class McpTools {
 			setJavadoc(),
 			listMembers(),
 			findUnmapped(),
+			decompile(),
 			save()
 		);
 	}
@@ -582,6 +587,67 @@ public class McpTools {
 			}
 
 			return ok(sb.toString());
+		});
+	}
+
+	@Nullable
+	private DecompilerService pickDecompiler(String name) {
+		switch (name) {
+			case "vineflower":
+				return Decompilers.VINEFLOWER;
+			case "cfr":
+				return Decompilers.CFR;
+			case "procyon":
+				return Decompilers.PROCYON;
+			case "bytecode":
+				return Decompilers.BYTECODE;
+		}
+		for (DecompilerService service : project.getEnigma().getServices().get(DecompilerService.TYPE)) {
+			String serviceName = service.getClass().getSimpleName().toLowerCase()
+					.replace("decompiler", "");
+			if (serviceName.contains(name)) {
+				return service;
+			}
+		}
+		return null;
+	}
+
+	private McpServerFeatures.SyncToolSpecification decompile() {
+		var jsonMapper = McpJsonDefaults.getMapper();
+		String schema = """
+			{"type":"object","properties":{"class_name":{"type":"string","description":"Obfuscated class name to decompile"},"decompiler":{"type":"string","description":"Decompiler to use: vineflower, cfr, procyon, or bytecode","default":"vineflower"}},"required":["class_name"]}
+			""";
+
+		var tool = toolBuilder("decompile", "Decompile a class to Java source code")
+			.inputSchema(jsonMapper, schema)
+			.build();
+
+		return new McpServerFeatures.SyncToolSpecification(tool, (exchange, request) -> {
+			Map<String, Object> args = request.arguments();
+			String className = args.get("class_name").toString();
+			String decompilerName = args.containsKey("decompiler") ? args.get("decompiler").toString().toLowerCase() : "vineflower";
+
+			ClassEntry cls = parseClass(className);
+			if (cls == null) {
+				return error("Invalid class name: " + className);
+			}
+
+			if (!project.getJarIndex().getEntryIndex().hasClass(cls)) {
+				return error("Class not found: " + cls.getFullName());
+			}
+
+			DecompilerService decompilerService = pickDecompiler(decompilerName);
+			if (decompilerService == null) {
+				return error("No decompiler found: " + decompilerName + ". Available: vineflower, cfr, procyon, bytecode");
+			}
+
+			try {
+				Decompiler decompiler = decompilerService.create(project.getClassProvider(), new SourceSettings(false, false));
+				String source = decompiler.getSource(className, remapper).asString();
+				return ok(source);
+			} catch (Exception e) {
+				return error("Failed to decompile class: " + e.getMessage());
+			}
 		});
 	}
 
