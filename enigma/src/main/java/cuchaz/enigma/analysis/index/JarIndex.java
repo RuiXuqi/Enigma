@@ -29,11 +29,13 @@ import cuchaz.enigma.classprovider.CachingClassProvider;
 import cuchaz.enigma.classprovider.ClassProvider;
 import cuchaz.enigma.translation.mapping.EntryResolver;
 import cuchaz.enigma.translation.mapping.IndexEntryResolver;
+import cuchaz.enigma.translation.representation.AccessFlags;
 import cuchaz.enigma.translation.representation.Lambda;
 import cuchaz.enigma.translation.representation.entry.ClassDefEntry;
 import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.FieldDefEntry;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
+import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodDefEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
 import cuchaz.enigma.translation.representation.entry.ParentedEntry;
@@ -151,6 +153,15 @@ public class JarIndex implements JarIndexer, JarIndexView {
 		if (!methodEntry.getAccess().isSynthetic() && !methodEntry.getName().equals("<clinit>")) {
 			synchronizedAdd(childrenByClass, methodEntry.getParent(), methodEntry);
 		}
+	}
+
+	@Override
+	public void indexParameter(LocalVariableEntry parameterEntry, AccessFlags access) {
+		if (parameterEntry.getParent().getParent().isJre()) {
+			return;
+		}
+
+		indexers.forEach(indexer -> indexer.indexParameter(parameterEntry, access));
 	}
 
 	@Override

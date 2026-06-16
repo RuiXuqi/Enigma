@@ -24,6 +24,7 @@ public class EntryIndex implements JarIndexer, EntryIndexView {
 	private final ConcurrentMap<ClassEntry, AccessFlags> classes = new ConcurrentHashMap<>();
 	private final ConcurrentMap<FieldEntry, AccessFlags> fields = new ConcurrentHashMap<>();
 	private final ConcurrentMap<MethodEntry, AccessFlags> methods = new ConcurrentHashMap<>();
+	private final ConcurrentMap<LocalVariableEntry, AccessFlags> parameters = new ConcurrentHashMap<>();
 	private final ConcurrentMap<ClassEntry, ClassDefEntry> definitions = new ConcurrentHashMap<>();
 
 	@Override
@@ -42,6 +43,11 @@ public class EntryIndex implements JarIndexer, EntryIndexView {
 		fields.put(fieldEntry, fieldEntry.getAccess());
 	}
 
+	@Override
+	public void indexParameter(LocalVariableEntry parameterEntry, AccessFlags access) {
+		parameters.put(parameterEntry, access);
+	}
+
 	public boolean hasClass(ClassEntry entry) {
 		return classes.containsKey(entry);
 	}
@@ -54,6 +60,10 @@ public class EntryIndex implements JarIndexer, EntryIndexView {
 		return fields.containsKey(entry);
 	}
 
+	public boolean hasParameter(LocalVariableEntry entry) {
+		return parameters.containsKey(entry);
+	}
+
 	public boolean hasEntry(Entry<?> entry) {
 		if (entry instanceof ClassEntry classEntry) {
 			return hasClass(classEntry);
@@ -62,7 +72,7 @@ public class EntryIndex implements JarIndexer, EntryIndexView {
 		} else if (entry instanceof FieldEntry fieldEntry) {
 			return hasField(fieldEntry);
 		} else if (entry instanceof LocalVariableEntry localVariableEntry) {
-			return hasMethod(localVariableEntry.getParent());
+			return hasParameter(localVariableEntry) || hasMethod(localVariableEntry.getParent());
 		}
 
 		return false;
@@ -84,12 +94,23 @@ public class EntryIndex implements JarIndexer, EntryIndexView {
 	}
 
 	@Nullable
+	public AccessFlags getParameterAccess(LocalVariableEntry entry) {
+		return parameters.get(entry);
+	}
+
+	@Nullable
 	public AccessFlags getEntryAccess(Entry<?> entry) {
 		if (entry instanceof MethodEntry methodEntry) {
 			return getMethodAccess(methodEntry);
 		} else if (entry instanceof FieldEntry fieldEntry) {
 			return getFieldAccess(fieldEntry);
 		} else if (entry instanceof LocalVariableEntry localVariableEntry) {
+			if (localVariableEntry.isArgument()) {
+				AccessFlags paramAccess = getParameterAccess(localVariableEntry);
+				if (paramAccess != null) {
+					return paramAccess;
+				}
+			}
 			return getMethodAccess(localVariableEntry.getParent());
 		}
 
@@ -111,6 +132,10 @@ public class EntryIndex implements JarIndexer, EntryIndexView {
 
 	public Collection<FieldEntry> getFields() {
 		return fields.keySet();
+	}
+
+	public Collection<LocalVariableEntry> getParameters() {
+		return parameters.keySet();
 	}
 
 	@Override

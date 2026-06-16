@@ -1,11 +1,13 @@
 package cuchaz.enigma.analysis.index;
 
 import cuchaz.enigma.analysis.ReferenceTargetType;
+import cuchaz.enigma.translation.representation.AccessFlags;
 import cuchaz.enigma.translation.representation.Lambda;
 import cuchaz.enigma.translation.representation.entry.ClassDefEntry;
 import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.FieldDefEntry;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
+import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodDefEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
 
@@ -17,6 +19,9 @@ public interface JarIndexer {
 	}
 
 	default void indexMethod(MethodDefEntry methodEntry) {
+	}
+
+	default void indexParameter(LocalVariableEntry parameterEntry, AccessFlags access) {
 	}
 
 	default void indexClassReference(MethodDefEntry callerEntry, ClassEntry referencedEntry, ReferenceTargetType targetType) {

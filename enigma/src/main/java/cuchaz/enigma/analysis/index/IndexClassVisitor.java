@@ -1,12 +1,16 @@
 package cuchaz.enigma.analysis.index;
 
+import cuchaz.enigma.Enigma;
+import cuchaz.enigma.translation.representation.AccessFlags;
+import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
+import cuchaz.enigma.translation.representation.entry.MethodDefEntry;
+
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 
 import cuchaz.enigma.translation.representation.entry.ClassDefEntry;
 import cuchaz.enigma.translation.representation.entry.FieldDefEntry;
-import cuchaz.enigma.translation.representation.entry.MethodDefEntry;
 
 public class IndexClassVisitor extends ClassVisitor {
 	private final JarIndexer indexer;
@@ -34,8 +38,28 @@ public class IndexClassVisitor extends ClassVisitor {
 
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-		indexer.indexMethod(MethodDefEntry.parse(classEntry, access, name, desc, signature));
+		MethodDefEntry methodEntry = MethodDefEntry.parse(classEntry, access, name, desc, signature);
+		indexer.indexMethod(methodEntry);
 
-		return super.visitMethod(access, name, desc, signature, exceptions);
+		return new IndexMethodVisitor(methodEntry, indexer);
+	}
+
+	private static class IndexMethodVisitor extends MethodVisitor {
+		private final MethodDefEntry method;
+		private final JarIndexer indexer;
+		private int paramIndex;
+
+		private IndexMethodVisitor(MethodDefEntry method, JarIndexer indexer) {
+			super(Enigma.ASM_VERSION);
+			this.method = method;
+			this.indexer = indexer;
+		}
+
+		@Override
+		public void visitParameter(String name, int access) {
+			LocalVariableEntry parameterEntry = new LocalVariableEntry(method, paramIndex, name, true, null);
+			indexer.indexParameter(parameterEntry, new AccessFlags(access));
+			paramIndex++;
+		}
 	}
 }
