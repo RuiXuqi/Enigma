@@ -169,32 +169,32 @@ public class SearchDialog {
 		final EntryIndex entryIndex = parent.getController().project.getJarIndex().getEntryIndex();
 
 		switch (type) {
-			case CLASS -> entryIndex.getClasses()
-					.parallelStream()
-					.filter(e -> !e.isInnerClass())
-					.map(e -> SearchEntryImpl.from(e, parent.getController()))
-					.map(SearchUtil.Entry::from)
-					.sequential()
-					.forEach(su::add);
-			case METHOD -> entryIndex.getMethods()
-					.parallelStream()
-					.filter(e -> !e.isConstructor() && !entryIndex.getMethodAccess(e).isSynthetic())
-					.map(e -> SearchEntryImpl.from(e, parent.getController()))
-					.map(SearchUtil.Entry::from)
-					.sequential()
-					.forEach(su::add);
-			case FIELD -> entryIndex.getFields()
-					.parallelStream()
-					.map(e -> SearchEntryImpl.from(e, parent.getController()))
-					.map(SearchUtil.Entry::from)
-					.sequential()
-					.forEach(su::add);
-			case PARAM -> entryIndex.getParameters()
-					.parallelStream()
-					.map(e -> SearchEntryImpl.from(e, parent.getController()))
-					.map(SearchUtil.Entry::from)
-					.sequential()
-					.forEach(su::add);
+		case CLASS -> entryIndex.getClasses()
+				.parallelStream()
+				.filter(e -> !e.isInnerClass())
+				.map(e -> SearchEntryImpl.from(e, parent.getController()))
+				.map(SearchUtil.Entry::from)
+				.sequential()
+				.forEach(su::add);
+		case METHOD -> entryIndex.getMethods()
+				.parallelStream()
+				.filter(e -> !e.isConstructor() && !entryIndex.getMethodAccess(e).isSynthetic())
+				.map(e -> SearchEntryImpl.from(e, parent.getController()))
+				.map(SearchUtil.Entry::from)
+				.sequential()
+				.forEach(su::add);
+		case FIELD -> entryIndex.getFields()
+				.parallelStream()
+				.map(e -> SearchEntryImpl.from(e, parent.getController()))
+				.map(SearchUtil.Entry::from)
+				.sequential()
+				.forEach(su::add);
+		case PARAM -> entryIndex.getParameters()
+				.parallelStream()
+				.map(e -> SearchEntryImpl.from(e, parent.getController()))
+				.map(SearchUtil.Entry::from)
+				.sequential()
+				.forEach(su::add);
 		}
 
 		updateList();

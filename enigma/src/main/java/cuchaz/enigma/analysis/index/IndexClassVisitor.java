@@ -42,7 +42,7 @@ public class IndexClassVisitor extends ClassVisitor {
 		MethodDefEntry methodEntry = MethodDefEntry.parse(classEntry, access, name, desc, signature);
 		indexer.indexMethod(methodEntry);
 
-		var mv = super.visitMethod(access, name, desc, signature, exceptions);
+		MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
 		return new IndexMethodVisitor(methodEntry, indexer, mv);
 	}
 
@@ -75,6 +75,7 @@ public class IndexClassVisitor extends ClassVisitor {
 				LocalVariableEntry parameterEntry = new LocalVariableEntry(method, index, name, true, null);
 				indexer.indexParameter(parameterEntry, new AccessFlags(0));
 			}
+
 			super.visitLocalVariable(name, descriptor, signature, start, end, index);
 		}
 	}

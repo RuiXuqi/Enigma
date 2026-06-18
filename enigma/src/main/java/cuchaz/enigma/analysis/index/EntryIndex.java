@@ -107,10 +107,12 @@ public class EntryIndex implements JarIndexer, EntryIndexView {
 		} else if (entry instanceof LocalVariableEntry localVariableEntry) {
 			if (localVariableEntry.isArgument()) {
 				AccessFlags paramAccess = getParameterAccess(localVariableEntry);
+
 				if (paramAccess != null) {
 					return paramAccess;
 				}
 			}
+
 			return getMethodAccess(localVariableEntry.getParent());
 		}
 
