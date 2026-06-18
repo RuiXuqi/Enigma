@@ -3,8 +3,10 @@ package cuchaz.enigma.mcp;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.modelcontextprotocol.json.McpJsonDefaults;
@@ -755,30 +757,66 @@ public class McpTools {
 	private McpServerFeatures.SyncToolSpecification save() {
 		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
 		String schema = """
-				{"type":"object","properties":{},"required":[]}
+				{"type":"object","properties":{"format":{"type":"string","description":"Mapping format name (case-insensitive): " + availableFormats()},"path":{"type":"string","description":"File path to save mappings to"}},"required":["format","path"]}
 				""";
 
-		McpSchema.Tool tool = toolBuilder("save", "Save current mappings to disk")
+		McpSchema.Tool tool = toolBuilder("save", "Save current mappings to disk in the specified format at the specified path")
 				.inputSchema(jsonMapper, schema)
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
 				tool, (exchange, request) -> {
+			Map<String, Object> args = request.arguments();
+			String formatName = args.get("format").toString();
+			String pathStr = args.get("path").toString();
+
+			MappingFormat format = parseMappingFormat(formatName);
+
+			if (format == null) {
+				return error("Unknown mapping format: " + formatName + ". Available formats: " + availableFormats());
+			}
+
+			if (!format.isWritable()) {
+				return error("Mapping format " + formatName + " does not support writing");
+			}
+
+			Path targetPath = Path.of(pathStr);
+
 			try {
-				mappingFormat.write(
+				format.write(
 						remapper.getObfToDeobf(),
 						remapper.takeMappingDelta(),
-						mappingsFile,
+						targetPath,
 						ProgressListener.none(),
 						saveParameters
 				);
-				return ok("Mappings saved to " + mappingsFile.toAbsolutePath());
+				return ok("Mappings saved to " + targetPath.toAbsolutePath());
 			} catch (Exception e) {
 				return error("Failed to save mappings: " + e.getMessage());
 			}
 		}
 
 		);
+	}
+
+	// -- mapping format helpers --
+
+	@Nullable
+	private static MappingFormat parseMappingFormat(String name) {
+		for (MappingFormat format : MappingFormat.getWritableFormats()) {
+			if (format.name().equalsIgnoreCase(name)) {
+				return format;
+			}
+		}
+
+		return null;
+	}
+
+	private static String availableFormats() {
+		return MappingFormat.getWritableFormats().stream()
+				.map(Enum::name)
+				.map(s -> s.toLowerCase(Locale.ROOT))
+				.collect(Collectors.joining(", "));
 	}
 
 	// -- argument helpers --
