@@ -2,7 +2,6 @@ package cuchaz.enigma.mcp;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -648,42 +647,28 @@ public class McpTools {
 				stream = stream.filter(e -> e.getContainingClass().getFullName().startsWith(filter));
 			}
 
-			List<Entry<?>> unmapped = stream
-					.filter(this::isUnmapped)
-					.sorted(Comparator.comparing(e -> {
-						if (e instanceof ClassEntry) {
-							return "1:" + e.getFullName();
-						}
-
-						if (e instanceof FieldEntry fe) {
-							return "2:" + fe.getParent().getFullName() + "." + fe.getName();
-						}
-
-						if (e instanceof MethodEntry me) {
-							return "3:" + me.getParent().getFullName() + "." + me.getName();
-						}
-
-						return "9:" + e.getFullName();
-					}))
+			List<String> descriptions = stream.filter(this::isUnmapped)
 					.limit(limit)
+					.map(this::entryDescription)
+					.sorted()
 					.toList();
 
-			if (unmapped.isEmpty()) {
+			if (descriptions.isEmpty()) {
 				return ok("No unmapped entries found.");
 			}
 
 			sb.append("Found ")
-					.append(unmapped.size())
+					.append(descriptions.size())
 					.append(" unmapped entr")
-					.append(unmapped.size() == 1 ? "y" : "ies");
+					.append(descriptions.size() == 1 ? "y" : "ies");
 			if (classFilter != null) {
 				sb.append(" in classes matching \"").append(classFilter).append("\"");
 			}
 
 			sb.append(":\n\n");
 
-			for (Entry<?> entry : unmapped) {
-				sb.append("  ").append(entryDescription(entry)).append("\n");
+			for (String desc : descriptions) {
+				sb.append("\t").append(desc).append("\n");
 			}
 
 			return ok(sb.toString());
