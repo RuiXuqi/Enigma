@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -608,7 +607,7 @@ public class McpTools {
 	private McpServerFeatures.SyncToolSpecification findUnmapped() {
 		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
 		String schema = """
-				{"type":"object","properties":{"entry_type":{"type":"string","description":"Type of entries: class, method, field, param, or all"},"class_filter":{"type":"string","description":"Optional obfuscated class name prefix filter"},"limit":{"type":"number","description":"Maximum results","default":50}},"required":["entry_type"]}
+				{"type":"object","properties":{"entry_type":{"type":"string","description":"Type of entries: class, method, constructor, field, param, or all"},"class_filter":{"type":"string","description":"Optional obfuscated class name prefix filter"},"limit":{"type":"number","description":"Maximum results","default":50}},"required":["entry_type"]}
 				""";
 
 		McpSchema.Tool tool = toolBuilder("find_unmapped", "Find entries that have no deobfuscated mapping yet")
@@ -618,31 +617,24 @@ public class McpTools {
 		return new McpServerFeatures.SyncToolSpecification(
 				tool, (exchange, request) -> {
 			Map<String, Object> args = request.arguments();
-			String entryType = args.get("entry_type").toString().toLowerCase();
+
+			EntryType entryType;
+
+			try {
+				entryType = EntryType.valueOf(String.valueOf(args.get("entry_type")).toUpperCase(Locale.ROOT));
+			} catch (IllegalArgumentException e) {
+				return error("Unknown entry_type: "
+						+ args.get("entry_type")
+						+ ". Valid: class, method, constructor, field, param, all");
+			}
+
 			String classFilter = getArg(args, "class_filter");
 			int limit = args.containsKey("limit") ? ((Number) args.get("limit")).intValue() : DEFAULT_UNMAPPED_LIMIT;
 
 			EntryIndex entryIndex = project.getJarIndex().getEntryIndex();
 			StringBuilder sb = new StringBuilder();
 
-			Stream<Entry<?>> stream = switch (entryType) {
-			case "class" -> entryIndex.getClasses().stream().map(Function.identity());
-			case "method" -> entryIndex.getMethods().stream().map(Function.identity());
-			case "field" -> entryIndex.getFields().stream().map(Function.identity());
-			case "param" -> entryIndex.getParameters().stream().map(Function.identity());
-			case "all" -> Stream.concat(
-					entryIndex.getClasses().stream(),
-					Stream.concat(
-							entryIndex.getMethods().stream(),
-							entryIndex.getFields().stream()
-					)
-			);
-			default -> null;
-			};
-
-			if (stream == null) {
-				return error(String.format("Unknown entry_type '%s', valid: ", entryType));
-			}
+			Stream<? extends Entry<?>> stream = entryType.extractEntries(entryIndex);
 
 			if (classFilter != null) {
 				String filter = normalizeClassName(classFilter);
@@ -677,6 +669,46 @@ public class McpTools {
 		}
 
 		);
+	}
+
+	private enum EntryType {
+		CLASS {
+			@Override
+			public Stream<? extends Entry<?>> extractEntries(EntryIndex index) {
+				return index.getClasses().stream().filter(c -> !c.isInnerClass());
+			}
+		},
+		CONSTRUCTOR {
+			@Override
+			public Stream<? extends Entry<?>> extractEntries(EntryIndex index) {
+				return index.getMethods().stream().filter(MethodEntry::isConstructor);
+			}
+		},
+		METHOD {
+			@Override
+			public Stream<? extends Entry<?>> extractEntries(EntryIndex index) {
+				return index.getMethods()
+						.stream()
+						.filter(e -> !e.isConstructor() && !index.getMethodAccess(e).isSynthetic());
+			}
+		},
+		FIELD {
+			@Override
+			public Stream<? extends Entry<?>> extractEntries(EntryIndex index) {
+				return index.getFields().stream();
+			}
+		},
+		ALL {
+			@Override
+			public Stream<? extends Entry<?>> extractEntries(EntryIndex index) {
+				return Stream.concat(
+						Stream.concat(CLASS.extractEntries(index), CONSTRUCTOR.extractEntries(index)),
+						Stream.concat(METHOD.extractEntries(index), FIELD.extractEntries(index))
+				);
+			}
+		};
+
+		public abstract Stream<? extends Entry<?>> extractEntries(EntryIndex index);
 	}
 
 	@Nullable
@@ -760,7 +792,10 @@ public class McpTools {
 				{"type":"object","properties":{"format":{"type":"string","description":"Mapping format name (case-insensitive): " + availableFormats()},"path":{"type":"string","description":"File path to save mappings to"}},"required":["format","path"]}
 				""";
 
-		McpSchema.Tool tool = toolBuilder("save", "Save current mappings to disk in the specified format at the specified path")
+		McpSchema.Tool tool = toolBuilder(
+				"save",
+				"Save current mappings to disk in the specified format at the specified path"
+		)
 				.inputSchema(jsonMapper, schema)
 				.build();
 
