@@ -74,7 +74,7 @@ public class McpMappingIO {
 						record.get(searge),
 						record.get(name),
 						Integer.parseInt(record.get(side)),
-						record.get(desc).replace("\\n", "\n")
+						desc2Javadoc(record.get(desc))
 				);
 			}
 		}
@@ -93,7 +93,7 @@ public class McpMappingIO {
 						record.get(searge),
 						record.get(name),
 						Integer.parseInt(record.get(side)),
-						record.get(desc).replace("\\n", "\n")
+						desc2Javadoc(record.get(desc))
 				);
 			}
 		}
@@ -285,7 +285,7 @@ public class McpMappingIO {
 			}
 
 			for (McpMapping.FieldMappingEntry entry : fields.values()) {
-				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), entry.desc().replace("\n", "\\n"));
+				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), javadoc2Desc(entry.desc()));
 			}
 
 			for (McpMapping.MethodMappingEntry entry : methods.values()) {
@@ -293,7 +293,7 @@ public class McpMappingIO {
 						entry.searge(),
 						entry.name(),
 						entry.side(),
-						entry.desc().replace("\n", "\\n")
+						javadoc2Desc(entry.desc())
 				);
 			}
 
@@ -321,5 +321,21 @@ public class McpMappingIO {
 		try (BufferedWriter writer = Files.newBufferedWriter(base.resolve(fileName))) {
 			writer.append(content);
 		}
+	}
+
+	private static String desc2Javadoc(String original) {
+		if (original == null) {
+			return null;
+		}
+
+		return original.replace("\\n", "\n");
+	}
+
+	private static String javadoc2Desc(String str) {
+		if (str == null) {
+			return null;
+		}
+
+		return str.replace("\n", "\\n");
 	}
 }
