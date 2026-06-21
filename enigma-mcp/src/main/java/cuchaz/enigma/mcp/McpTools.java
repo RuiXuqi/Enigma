@@ -789,8 +789,8 @@ public class McpTools {
 	private McpServerFeatures.SyncToolSpecification save() {
 		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
 		String schema = """
-				{"type":"object","properties":{"format":{"type":"string","description":"Mapping format name (case-insensitive): " + availableFormats()},"path":{"type":"string","description":"File path to save mappings to"}},"required":["format","path"]}
-				""";
+				{"type":"object","properties":{"format":{"type":"string","description":"Mapping format name (case-insensitive): %s"},"path":{"type":"string","description":"File path to save mappings to"}},"required":["format","path"]}
+				""".formatted(availableFormats());
 
 		McpSchema.Tool tool = toolBuilder(
 				"save",
