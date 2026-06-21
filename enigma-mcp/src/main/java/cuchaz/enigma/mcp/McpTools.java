@@ -1,5 +1,6 @@
 package cuchaz.enigma.mcp;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -816,6 +817,22 @@ public class McpTools {
 			}
 
 			Path targetPath = Path.of(pathStr);
+
+			// Validate path matches the format's expected file type
+			MappingFormat.FileType fileType = format.getFileType();
+
+			if (fileType.isDirectory()) {
+				if (!Files.isDirectory(targetPath)) {
+					return error("Format " + formatName + " expects a directory, but path looks like a file: " + pathStr);
+				}
+			} else {
+				String fileName = mappingsFile.getFileName().toString();
+
+				if (fileType.extensions().stream().noneMatch(fileName::endsWith)) {
+					String expected = String.join(" or ", fileType.extensions());
+					return error("Format " + formatName + " expects " + expected + " file, but path does not match: " + pathStr);
+				}
+			}
 
 			try {
 				format.write(

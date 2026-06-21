@@ -112,6 +112,23 @@ public class EnigmaMcpMain {
 			EnigmaProject project = enigma.openJars(jars, libraries, ProgressListener.none());
 
 			MappingFormat mappingFormat = parseMappingFormat(mappingFormatStr);
+
+			// Validate mapping file path matches the format's expected file type
+			MappingFormat.FileType fileType = mappingFormat.getFileType();
+
+			if (fileType.isDirectory()) {
+				if (!Files.isDirectory(mappingsFile)) {
+					throw new IllegalArgumentException("Format " + mappingFormatStr + " expects a directory, but mapping path looks like a file: " + mappingsFile);
+				}
+			} else {
+				String fileName = mappingsFile.getFileName().toString();
+
+				if (fileType.extensions().stream().noneMatch(fileName::endsWith)) {
+					String expected = String.join(" or ", fileType.extensions());
+					throw new IllegalArgumentException("Format " + mappingFormatStr + " expects " + expected + " file, but mapping path does not match: " + mappingsFile);
+				}
+			}
+
 			EntryRemapper remapper;
 
 			if (!Files.exists(mappingsFile)) {
