@@ -6,7 +6,7 @@ plugins {
 dependencies {
 	implementation project(':enigma')
 	implementation 'net.sf.jopt-simple:jopt-simple:6.0-alpha-3'
-	implementation 'io.modelcontextprotocol.sdk:mcp:1.1.2'
+	implementation 'io.modelcontextprotocol.sdk:mcp:2.0.0'
 }
 
 application {

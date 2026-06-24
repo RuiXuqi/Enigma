@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.modelcontextprotocol.json.McpJsonDefaults;
-import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.jetbrains.annotations.Nullable;
@@ -67,12 +65,6 @@ public class McpTools {
 				decompile(),
 				save()
 		);
-	}
-
-	private static McpSchema.Tool.Builder toolBuilder(String name, String description) {
-		return McpSchema.Tool.builder()
-				.name(name)
-				.description(description);
 	}
 
 	private static McpSchema.CallToolResult ok(String text) {
@@ -203,21 +195,28 @@ public class McpTools {
 	// -- tools --
 
 	private McpServerFeatures.SyncToolSpecification searchClasses() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"query":{"type":"string","description":"Class name pattern to search for"},"obfuscated":{"type":"boolean","description":"Search by obfuscated name","default":true}},"required":["query"]}
-				""";
-
-		McpSchema.Tool tool = toolBuilder("search_classes", "Search classes by name pattern")
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder(
+						"search_classes", Map.of(
+								"type", "object",
+								"properties", Map.of(
+										"query", Map.of(
+												"type", "string",
+												"description", "Class name pattern to search for"),
+										"obfuscated", Map.of(
+												"type", "boolean",
+												"description", "Search by obfuscated name",
+												"default", true)),
+								"required", List.of("query")
+						)
+				)
+				.description("Search classes by name pattern")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
 				tool, (exchange, request) -> {
 			Map<String, Object> args = request.arguments();
 			String query = args.get("query").toString().toLowerCase();
-			boolean searchObf = args.containsKey("obfuscated") && Boolean.parseBoolean(args.get("obfuscated")
-					.toString());
+			boolean searchObf = args.containsKey("obfuscated") && Boolean.parseBoolean(args.get("obfuscated").toString());
 
 			EntryIndex entryIndex = project.getJarIndex().getEntryIndex();
 			StringBuilder sb = new StringBuilder();
@@ -258,13 +257,31 @@ public class McpTools {
 	}
 
 	private McpServerFeatures.SyncToolSpecification getEntry() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"entry_type":{"type":"string","description":"Entry type: class, method, field, or param"},"class_name":{"type":"string","description":"Obfuscated or deobfuscated class name"},"member_name":{"type":"string","description":"Member name (for method/field/param)"},"descriptor":{"type":"string","description":"Descriptor for method/field, e.g. (I)V or I"},"param_index":{"type":"number","description":"Parameter index (for param type)"},"search_by_deobf":{"type":"boolean","description":"If true, class_name/member_name are deobfuscated names","default":false}},"required":["entry_type","class_name"]}
-				""";
-
-		McpSchema.Tool tool = toolBuilder("get_entry", "Get detailed info about a class, method, field, or parameter")
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder("get_entry", Map.of(
+						"type", "object",
+						"properties", Map.of(
+								"entry_type", Map.of(
+										"type", "string",
+										"description", "Entry type: class, method, field, or param"),
+								"class_name", Map.of(
+										"type", "string",
+										"description", "Obfuscated or deobfuscated class name"),
+								"member_name", Map.of(
+										"type", "string",
+										"description", "Member name (for method/field/param)"),
+								"descriptor", Map.of(
+										"type", "string",
+										"description", "Descriptor for method/field, e.g. (I)V or I"),
+								"param_index", Map.of(
+										"type", "number",
+										"description", "Parameter index (for param type)"),
+								"search_by_deobf", Map.of(
+										"type", "boolean",
+										"description", "If true, class_name/member_name are deobfuscated names",
+										"default", false)),
+						"required", List.of("entry_type", "class_name")
+				))
+				.description("Get detailed info about a class, method, field, or parameter")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
@@ -272,8 +289,7 @@ public class McpTools {
 			Map<String, Object> args = request.arguments();
 			String entryType = args.get("entry_type").toString().toLowerCase();
 			String className = args.get("class_name").toString();
-			boolean searchByDeobf = args.containsKey("search_by_deobf") && Boolean.parseBoolean(args.get(
-					"search_by_deobf").toString());
+			boolean searchByDeobf = args.containsKey("search_by_deobf") && Boolean.parseBoolean(args.get("search_by_deobf").toString());
 
 			if (!searchByDeobf) {
 				ClassEntry cls = parseClass(className);
@@ -373,13 +389,27 @@ public class McpTools {
 	}
 
 	private McpServerFeatures.SyncToolSpecification rename() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"entry_type":{"type":"string","description":"Entry type: class, method, or field"},"class_name":{"type":"string","description":"Obfuscated class name"},"new_name":{"type":"string","description":"New deobfuscated name"},"member_name":{"type":"string","description":"Member name (for method/field)"},"descriptor":{"type":"string","description":"Descriptor for method/field)"}},"required":["entry_type","class_name","new_name"]}
-				""";
-
-		McpSchema.Tool tool = toolBuilder("rename", "Rename a class, method, or field")
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder("rename", Map.of(
+						"type", "object",
+						"properties", Map.of(
+								"entry_type", Map.of(
+										"type", "string",
+										"description", "Entry type: class, method, or field"),
+								"class_name", Map.of(
+										"type", "string",
+										"description", "Obfuscated class name"),
+								"new_name", Map.of(
+										"type", "string",
+										"description", "New deobfuscated name"),
+								"member_name", Map.of(
+										"type", "string",
+										"description", "Member name (for method/field)"),
+								"descriptor", Map.of(
+										"type", "string",
+										"description", "Descriptor for method/field)")),
+						"required", List.of("entry_type", "class_name", "new_name")
+				))
+				.description("Rename a class, method, or field")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
@@ -443,13 +473,27 @@ public class McpTools {
 	}
 
 	private McpServerFeatures.SyncToolSpecification setJavadoc() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"entry_type":{"type":"string","description":"Entry type: class, method, or field"},"class_name":{"type":"string","description":"Obfuscated class name"},"javadoc":{"type":"string","description":"Javadoc text to set"},"member_name":{"type":"string","description":"Member name (for method/field)"},"descriptor":{"type":"string","description":"Descriptor for method/field)"}},"required":["entry_type","class_name","javadoc"]}
-				""";
-
-		McpSchema.Tool tool = toolBuilder("set_javadoc", "Set javadoc for a class, method, or field")
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder("set_javadoc", Map.of(
+						"type", "object",
+						"properties", Map.of(
+								"entry_type", Map.of(
+										"type", "string",
+										"description", "Entry type: class, method, or field"),
+								"class_name", Map.of(
+										"type", "string",
+										"description", "Obfuscated class name"),
+								"javadoc", Map.of(
+										"type", "string",
+										"description", "Javadoc text to set"),
+								"member_name", Map.of(
+										"type", "string",
+										"description", "Member name (for method/field)"),
+								"descriptor", Map.of(
+										"type", "string",
+										"description", "Descriptor for method/field)")),
+						"required", List.of("entry_type", "class_name", "javadoc")
+				))
+				.description("Set javadoc for a class, method, or field")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
@@ -505,13 +549,19 @@ public class McpTools {
 	}
 
 	private McpServerFeatures.SyncToolSpecification listMembers() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"class_name":{"type":"string","description":"Obfuscated class name"},"member_type":{"type":"string","description":"Type of members: method, field, or all","default":"all"}},"required":["class_name"]}
-				""";
-
-		McpSchema.Tool tool = toolBuilder("list_members", "List methods and fields of a class")
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder("list_members", Map.of(
+						"type", "object",
+						"properties", Map.of(
+								"class_name", Map.of(
+										"type", "string",
+										"description", "Obfuscated class name"),
+								"member_type", Map.of(
+										"type", "string",
+										"description", "Type of members: method, field, or all",
+										"default", "all")),
+						"required", List.of("class_name")
+				))
+				.description("List methods and fields of a class")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
@@ -606,13 +656,22 @@ public class McpTools {
 	}
 
 	private McpServerFeatures.SyncToolSpecification findUnmapped() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"entry_type":{"type":"string","description":"Type of entries: class, method, constructor, field, param, or all"},"class_filter":{"type":"string","description":"Optional obfuscated class name prefix filter"},"limit":{"type":"number","description":"Maximum results","default":50}},"required":["entry_type"]}
-				""";
-
-		McpSchema.Tool tool = toolBuilder("find_unmapped", "Find entries that have no deobfuscated mapping yet")
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder("find_unmapped", Map.of(
+						"type", "object",
+						"properties", Map.of(
+								"entry_type", Map.of(
+										"type", "string",
+										"description", "Type of entries: class, method, constructor, field, param, or all"),
+								"class_filter", Map.of(
+										"type", "string",
+										"description", "Optional obfuscated class name prefix filter"),
+								"limit", Map.of(
+										"type", "number",
+										"description", "Maximum results",
+										"default", 50)),
+						"required", List.of("entry_type")
+				))
+				.description("Find entries that have no deobfuscated mapping yet")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
@@ -737,13 +796,19 @@ public class McpTools {
 	}
 
 	private McpServerFeatures.SyncToolSpecification decompile() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"class_name":{"type":"string","description":"Obfuscated class name to decompile"},"decompiler":{"type":"string","description":"Decompiler to use: vineflower, cfr, procyon, or bytecode","default":"vineflower"}},"required":["class_name"]}
-				""";
-
-		McpSchema.Tool tool = toolBuilder("decompile", "Decompile a class to Java source code")
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder("decompile", Map.of(
+						"type", "object",
+						"properties", Map.of(
+								"class_name", Map.of(
+										"type", "string",
+										"description", "Obfuscated class name to decompile"),
+								"decompiler", Map.of(
+										"type", "string",
+										"description", "Decompiler to use: vineflower, cfr, procyon, or bytecode",
+										"default", "vineflower")),
+						"required", List.of("class_name")
+				))
+				.description("Decompile a class to Java source code")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
@@ -788,16 +853,18 @@ public class McpTools {
 	}
 
 	private McpServerFeatures.SyncToolSpecification save() {
-		McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
-		String schema = """
-				{"type":"object","properties":{"format":{"type":"string","description":"Mapping format name (case-insensitive): %s"},"path":{"type":"string","description":"File path to save mappings to"}},"required":["format","path"]}
-				""".formatted(availableFormats());
-
-		McpSchema.Tool tool = toolBuilder(
-				"save",
-				"Save current mappings to disk in the specified format at the specified path"
-		)
-				.inputSchema(jsonMapper, schema)
+		McpSchema.Tool tool = McpSchema.Tool.builder("save", Map.of(
+						"type", "object",
+						"properties", Map.of(
+								"format", Map.of(
+										"type", "string",
+										"description", "Mapping format name (case-insensitive): " + availableFormats()),
+								"path", Map.of(
+										"type", "string",
+										"description", "File path to save mappings to")),
+						"required", List.of("format", "path")
+				))
+				.description("Save current mappings to disk in the specified format at the specified path")
 				.build();
 
 		return new McpServerFeatures.SyncToolSpecification(
