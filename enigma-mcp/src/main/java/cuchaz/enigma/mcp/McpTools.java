@@ -115,15 +115,16 @@ public class McpTools {
 		StringBuilder sb = new StringBuilder();
 
 		if (entry instanceof ClassEntry ce) {
+			// class <name>
 			sb.append("class ").append(ce.getFullName());
 		} else if (entry instanceof FieldEntry fe) {
+			// field <name>@<class>
 			sb.append("field ")
 					.append(fe.getName())
-					.append(" ")
-					.append(fe.getDesc())
 					.append("@")
 					.append(fe.getParent().getFullName());
 		} else if (entry instanceof MethodEntry me) {
+			// method <name+desc>@<class>
 			sb.append("method ")
 					.append(me.getName())
 					.append(me.getDesc())
@@ -131,6 +132,7 @@ public class McpTools {
 					.append(me.getParent().getFullName());
 		} else if (entry instanceof LocalVariableEntry lve) {
 			MethodEntry method = lve.getParent();
+			// param <name>@<class>#<method name+desc>
 			sb.append("param ")
 					.append(lve.getName())
 					.append("@")
@@ -734,9 +736,11 @@ public class McpTools {
 			if (classFilter != null) {
 				sb.append(" in classes matching \"").append(classFilter).append("\"");
 			}
+
 			if (namePrefix != null) {
 				sb.append(", name prefix \"").append(namePrefix).append("\"");
 			}
+
 			if (nameSuffix != null) {
 				sb.append(", name suffix \"").append(nameSuffix).append("\"");
 			}
