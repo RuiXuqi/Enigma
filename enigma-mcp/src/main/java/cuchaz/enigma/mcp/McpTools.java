@@ -665,6 +665,12 @@ public class McpTools {
 								"class_filter", Map.of(
 										"type", "string",
 										"description", "Optional obfuscated class name prefix filter"),
+								"name_prefix", Map.of(
+										"type", "string",
+										"description", "Optional filter: entry name starts with this value"),
+								"name_suffix", Map.of(
+										"type", "string",
+										"description", "Optional filter: entry name ends with this value"),
 								"limit", Map.of(
 										"type", "number",
 										"description", "Maximum results",
@@ -689,6 +695,8 @@ public class McpTools {
 			}
 
 			String classFilter = getArg(args, "class_filter");
+			String namePrefix = getArg(args, "name_prefix");
+			String nameSuffix = getArg(args, "name_suffix");
 			int limit = args.containsKey("limit") ? ((Number) args.get("limit")).intValue() : DEFAULT_UNMAPPED_LIMIT;
 
 			EntryIndex entryIndex = project.getJarIndex().getEntryIndex();
@@ -699,6 +707,14 @@ public class McpTools {
 			if (classFilter != null) {
 				String filter = normalizeClassName(classFilter);
 				stream = stream.filter(e -> e.getContainingClass().getFullName().startsWith(filter));
+			}
+
+			if (namePrefix != null) {
+				stream = stream.filter(e -> e.getName().startsWith(namePrefix));
+			}
+
+			if (nameSuffix != null) {
+				stream = stream.filter(e -> e.getName().endsWith(nameSuffix));
 			}
 
 			List<String> descriptions = stream.filter(this::isUnmapped)
@@ -717,6 +733,12 @@ public class McpTools {
 					.append(descriptions.size() == 1 ? "y" : "ies");
 			if (classFilter != null) {
 				sb.append(" in classes matching \"").append(classFilter).append("\"");
+			}
+			if (namePrefix != null) {
+				sb.append(", name prefix \"").append(namePrefix).append("\"");
+			}
+			if (nameSuffix != null) {
+				sb.append(", name suffix \"").append(nameSuffix).append("\"");
 			}
 
 			sb.append(":\n\n");
