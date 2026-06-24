@@ -784,13 +784,18 @@ public class McpTools {
 				return index.getFields().stream();
 			}
 		},
+		PARAM {
+			@Override
+			public Stream<? extends Entry<?>> extractEntries(EntryIndex index) {
+				return index.getParameters()
+						.stream()
+						.filter(e -> !index.getMethodAccess(e.getParent()).isSynthetic());
+			}
+		},
 		ALL {
 			@Override
 			public Stream<? extends Entry<?>> extractEntries(EntryIndex index) {
-				return Stream.concat(
-						Stream.concat(CLASS.extractEntries(index), CONSTRUCTOR.extractEntries(index)),
-						Stream.concat(METHOD.extractEntries(index), FIELD.extractEntries(index))
-				);
+				return Stream.of(CLASS, CONSTRUCTOR, METHOD, FIELD, PARAM).flatMap(type -> type.extractEntries(index));
 			}
 		};
 
