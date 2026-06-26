@@ -39,14 +39,8 @@ public class McpMappingIO {
 			MappingSaveParameters saveParameters,
 			JarIndex index
 	) throws IOException, MappingParseException {
-		mcpMapping = new McpMapping(
-				new HashMap<>(),
-				new HashMap<>(),
-				new HashMap<>(),
-				new HashMap<>(),
-				new HashMap<>()
-		);
-		HashEntryTree<EntryMapping> tree = new HashEntryTree<EntryMapping>();
+		mcpMapping = new McpMapping(new HashMap<>(), new HashMap<>(), new HashMap<>());
+		HashEntryTree<EntryMapping> tree = new HashEntryTree<>();
 
 		CSVFormat fieldMethodFormat = CSVFormat.DEFAULT.builder()
 				.setSkipHeaderRecord(true)
@@ -57,7 +51,7 @@ public class McpMappingIO {
 				.setHeader("param", "name", "side")
 				.get();
 
-		progressListener.init(5, "Init");
+		progressListener.init(4, "Init");
 		try (BufferedReader reader = Files.newBufferedReader(path.resolve("fields.csv"));
 				CSVParser parser = CSVParser.parse(reader, fieldMethodFormat)) {
 			int searge = parser.getHeaderMap().get("searge");
@@ -109,20 +103,6 @@ public class McpMappingIO {
 
 		progressListener.step(3, "Param reading done");
 
-		try (BufferedReader reader = Files.newBufferedReader(path.resolve("constructors.txt"))) {
-			String line;
-
-			while ((line = reader.readLine()) != null) {
-				String[] parts = line.split(" ", 3);
-				String className = parts[1];
-				String descriptor = parts[2];
-				mcpMapping.constructors()
-						.put(className + descriptor, new McpMapping.ConstructorIndex(parts[0], className, descriptor));
-			}
-		}
-
-		progressListener.step(4, "Constructor reading done");
-
 		for (FieldEntry field : index.getEntryIndex().getFields()) {
 			if (field.getName().startsWith("field_")) {
 				McpMapping.FieldMappingEntry fieldMappingEntry = mcpMapping.fields().get(field.getName());
@@ -153,7 +133,7 @@ public class McpMappingIO {
 			}
 		}
 
-		progressListener.step(5, "Mapping built");
+		progressListener.step(4, "Mapping built");
 
 		return tree;
 	}
@@ -217,28 +197,14 @@ public class McpMappingIO {
 							)
 					);
 				} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
-					// for whatever reason, localEntry.getName() gives remapped name, so build param name ourselves: p_<method_index>_<index>_
-					String methodName = localEntry.getParent().getName();
-					String methodIndex;
-
-					if (methodName.equals("<init>")) {
-						MethodEntry methodEntry = localEntry.getParent();
-						McpMapping.ConstructorIndex constructorIndex = mcpMapping.constructors()
-								.get(methodEntry.getParent().getFullName() + methodEntry.getDescriptor());
-						methodIndex = "i" + constructorIndex.index();
-					} else if (methodName.startsWith("func_")) {
-						methodIndex = methodName.substring("func_".length()).split("_", 2)[0];
-					} else {
-						return;
-					}
-
-					String srgParamName = "p_" + methodIndex + "_" + localEntry.getIndex() + "_";
+					String srgParamName = localEntry.getName();
+					String[] split = srgParamName.substring("p_".length()).split("_");
 
 					McpMapping.ParamMappingEntry paramMappingEntry = mcpMapping.params().get(srgParamName);
 					int side = paramMappingEntry == null ? 0 : paramMappingEntry.side();
 
 					params.put(
-							new ParamKey(methodIndex, String.valueOf(localEntry.getIndex())),
+							new ParamKey(split[0], split[1]),
 							new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side)
 					);
 				}
@@ -259,12 +225,7 @@ public class McpMappingIO {
 			}
 
 			for (McpMapping.MethodMappingEntry entry : methods.values()) {
-				methodPrinter.printRecord(
-						entry.searge(),
-						entry.name(),
-						entry.side(),
-						javadoc2Desc(entry.desc())
-				);
+				methodPrinter.printRecord(entry.searge(), entry.name(), entry.side(), javadoc2Desc(entry.desc()));
 			}
 
 			for (McpMapping.ParamMappingEntry entry : params.values()) {
