@@ -277,6 +277,7 @@ public class McpMappingIO {
 		progressListener.step(1, "Entries collected");
 
 		try {
+			Files.createDirectories(path);
 			write(path, "fields.csv", fieldsWriter);
 			write(path, "methods.csv", methodsWriter);
 			write(path, "params.csv", paramsWriter);
