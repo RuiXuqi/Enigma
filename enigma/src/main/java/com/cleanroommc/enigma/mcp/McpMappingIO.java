@@ -8,8 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.commons.csv.CSVFormat;
@@ -25,11 +23,9 @@ import cuchaz.enigma.translation.mapping.serde.MappingParseException;
 import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
 import cuchaz.enigma.translation.mapping.tree.HashEntryTree;
-import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
 import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
-import cuchaz.enigma.translation.representation.entry.ParentedEntry;
 
 /**
  * @author ZZZank
@@ -127,63 +123,37 @@ public class McpMappingIO {
 
 		progressListener.step(4, "Constructor reading done");
 
-		for (Map.Entry<ClassEntry, List<ParentedEntry<?>>> entriesByClass : index.getChildrenByClass().entrySet()) {
-			ClassEntry classEntry = entriesByClass.getKey();
+		for (FieldEntry field : index.getEntryIndex().getFields()) {
+			if (field.getName().startsWith("field_")) {
+				McpMapping.FieldMappingEntry fieldMappingEntry = mcpMapping.fields().get(field.getName());
 
-			for (ParentedEntry<?> entry : entriesByClass.getValue()) {
-				// entry.getParent() gives class entry
-				String name = entry.getName();
-
-				if (entry instanceof FieldEntry fieldEntry && name.startsWith("field_")) {
-					McpMapping.FieldMappingEntry fieldMappingEntry = mcpMapping.fields().get(name);
-
-					if (fieldMappingEntry != null) {
-						tree.insert(fieldEntry, new EntryMapping(fieldMappingEntry.name(), fieldMappingEntry.desc()));
-					}
-				} else if (entry instanceof MethodEntry methodEntry) {
-					String methodIndex = null;
-
-					if (name.startsWith("func_")) {
-						// method name: func_<index>_<notch_name>_
-						McpMapping.MethodMappingEntry methodMappingEntry = mcpMapping.methods().get(name);
-
-						if (methodMappingEntry != null) {
-							tree.insert(
-									methodEntry,
-									new EntryMapping(methodMappingEntry.name(), methodMappingEntry.desc())
-							);
-						}
-
-						methodIndex = name.substring("func_".length()).split("_", 2)[0];
-					} else if (name.equals("<init>")) {
-						// constructor name: <init>
-						McpMapping.ConstructorIndex constructorIndex = mcpMapping.constructors()
-								.get(classEntry.getFullName() + methodEntry.getDescriptor());
-						if (constructorIndex != null) {
-							methodIndex = "i" + constructorIndex.index();
-						}
-					}
-
-					if (methodIndex == null) {
-						continue;
-					}
-
-					List<McpMapping.ParamMappingEntry> params = mcpMapping.paramsByMethodIndex()
-							.getOrDefault(methodIndex, List.of());
-					for (McpMapping.ParamMappingEntry paramMapping : params) {
-						// param key format: p_<method_index>_<index>_
-						String[] parts = paramMapping.param().substring("p_".length()).split("_");
-						int paramIndex = Integer.parseInt(parts[1]);
-						tree.insert(
-								new LocalVariableEntry(methodEntry, paramIndex, paramMapping.name(), true, null),
-								new EntryMapping(paramMapping.name()) // no javadoc for params
-						);
-					}
+				if (fieldMappingEntry != null) {
+					tree.insert(field, new EntryMapping(fieldMappingEntry.name(), fieldMappingEntry.desc()));
 				}
 			}
 		}
 
-		progressListener.step(4, "Mapping built");
+		for (MethodEntry method : index.getEntryIndex().getMethods()) {
+			if (method.getName().startsWith("func_")) {
+				McpMapping.MethodMappingEntry methodMappingEntry = mcpMapping.methods().get(method.getName());
+
+				if (methodMappingEntry != null) {
+					tree.insert(method, new EntryMapping(methodMappingEntry.name(), methodMappingEntry.desc()));
+				}
+			}
+		}
+
+		for (LocalVariableEntry param : index.getEntryIndex().getParameters()) {
+			if (param.getName().startsWith("p_")) {
+				McpMapping.ParamMappingEntry methodMappingEntry = mcpMapping.params().get(param.getName());
+
+				if (methodMappingEntry != null) {
+					tree.insert(param, new EntryMapping(methodMappingEntry.name()));
+				}
+			}
+		}
+
+		progressListener.step(5, "Mapping built");
 
 		return tree;
 	}
