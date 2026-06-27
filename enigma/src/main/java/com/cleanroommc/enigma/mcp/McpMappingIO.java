@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.TreeMap;
 
@@ -14,6 +13,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jetbrains.annotations.NotNull;
 
 import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.analysis.index.JarIndex;
@@ -155,13 +155,17 @@ public class McpMappingIO {
 		try (var fieldPrinter = new CSVPrinter(fieldsWriter, fieldMethodFormat);
 				var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
 				var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
-			record ParamKey(String methodIndex, String localIndex) {
+			record ParamKey(String methodIndex, String localIndex) implements Comparable<ParamKey> {
+				@Override
+				public int compareTo(@NotNull ParamKey o) {
+					int compared = ParamKey.this.methodIndex.compareTo(o.methodIndex);
+					return compared == 0 ? ParamKey.this.localIndex.compareTo(o.localIndex) : compared;
+				}
 			}
 
 			var fields = new TreeMap<String, McpMapping.FieldMappingEntry>();
 			var methods = new TreeMap<String, McpMapping.MethodMappingEntry>();
-			var params = new TreeMap<ParamKey, McpMapping.ParamMappingEntry>(Comparator.comparing(ParamKey::methodIndex)
-					.thenComparing(ParamKey::localIndex));
+			var params = new TreeMap<ParamKey, McpMapping.ParamMappingEntry>();
 
 			mappings.getAllEntries().forEach(entry -> {
 				EntryMapping mapping = mappings.get(entry);
