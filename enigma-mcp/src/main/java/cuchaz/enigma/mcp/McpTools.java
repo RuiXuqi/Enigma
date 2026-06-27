@@ -119,6 +119,12 @@ public class McpTools {
 	private String entryDescription(Entry<?> entry) {
 		StringBuilder sb = new StringBuilder();
 
+		entryDescription(entry, sb);
+
+		return sb.toString();
+	}
+
+	private void entryDescription(Entry<?> entry, StringBuilder sb) {
 		if (entry instanceof ClassEntry ce) {
 			// class <name>
 			sb.append("class ").append(ce.getFullName());
@@ -154,8 +160,6 @@ public class McpTools {
 		if (mapping != null) {
 			sb.append(" -> ").append(mapping.targetName());
 		}
-
-		return sb.toString();
 	}
 
 	private String entryDetail(Entry<?> entry) {
@@ -561,7 +565,7 @@ public class McpTools {
 						"properties", Map.of(
 								"class_name", Map.of(
 										"type", "string",
-										"description", "Obfuscated class name"),
+										"description", "Obfuscated class internal name"),
 								"member_type", Map.of(
 										"type", "string",
 										"description", "Type of members: method, field, or all",
@@ -575,9 +579,7 @@ public class McpTools {
 				tool, (exchange, request) -> {
 			Map<String, Object> args = request.arguments();
 			String className = args.get("class_name").toString();
-			String memberType = args.containsKey("member_type") ? args.get("member_type")
-					.toString()
-					.toLowerCase() : "all";
+			String memberType = args.getOrDefault("member_type", "all").toString();
 
 			ClassEntry cls = parseClass(className);
 
@@ -608,51 +610,33 @@ public class McpTools {
 			boolean showField = memberType.equals("field") || memberType.equals("all");
 
 			if (showField) {
-				sb.append("\n--- Fields ---\n");
-
 				for (ParentedEntry<?> child : children) {
-					if (child instanceof FieldEntry field) {
-						sb.append("  ").append(field.getName()).append(" ").append(field.getDesc());
-						EntryMapping fm = getMappingOrNull(field);
-
-						if (fm != null) {
-							sb.append(" -> ").append(fm.targetName());
-						}
-
-						sb.append("\n");
+					if (child instanceof FieldEntry) {
+						entryDescription(child, sb);
+						sb.append('\n');
 					}
 				}
+
+				sb.append('\n');
 			}
 
 			if (showMethod) {
-				sb.append("\n--- Methods ---\n");
-
 				for (ParentedEntry<?> child : children) {
-					if (child instanceof MethodEntry method) {
-						sb.append("  ").append(method.getName()).append(method.getDesc());
-						EntryMapping mm = getMappingOrNull(method);
-
-						if (mm != null) {
-							sb.append(" -> ").append(mm.targetName());
-						}
-
-						sb.append("\n");
+					if (child instanceof MethodEntry) {
+						entryDescription(child, sb);
+						sb.append('\n');
 					}
 				}
+
+				sb.append('\n');
 			}
 
-			sb.append("\n--- Inner Classes ---\n");
+			sb.append("--- Inner Classes ---\n");
 
 			for (ParentedEntry<?> child : children) {
-				if (child instanceof ClassEntry inner) {
-					sb.append("  ").append(inner.getSimpleName());
-					EntryMapping im = getMappingOrNull(inner);
-
-					if (im != null) {
-						sb.append(" -> ").append(im.targetName());
-					}
-
-					sb.append("\n");
+				if (child instanceof ClassEntry) {
+					entryDescription(child, sb);
+					sb.append('\n');
 				}
 			}
 
