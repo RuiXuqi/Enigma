@@ -25,7 +25,6 @@ import cuchaz.enigma.EnigmaProfile;
 import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.translation.mapping.EntryMapping;
-import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
 import cuchaz.enigma.translation.mapping.serde.MappingParseException;
 import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
@@ -34,20 +33,17 @@ import cuchaz.enigma.translation.mapping.tree.EntryTree;
 public class EnigmaMcpMain {
 	private final McpSyncServer server;
 	private final EnigmaProject project;
-	private final EntryRemapper remapper;
 	private final MappingFormat mappingFormat;
 	private final Path mappingsFile;
 	private final MappingSaveParameters saveParameters;
 
 	public EnigmaMcpMain(McpSyncServer server,
 			EnigmaProject project,
-			EntryRemapper remapper,
 			MappingFormat mappingFormat,
 			Path mappingsFile,
 			MappingSaveParameters saveParameters) {
 		this.server = server;
 		this.project = project;
-		this.remapper = remapper;
 		this.mappingFormat = mappingFormat;
 		this.mappingsFile = mappingsFile;
 		this.saveParameters = saveParameters;
@@ -129,11 +125,9 @@ public class EnigmaMcpMain {
 				}
 			}
 
-			EntryRemapper remapper;
-
 			if (!Files.exists(mappingsFile)) {
 				System.err.println("Mapping file not found, starting with empty mappings");
-				remapper = EntryRemapper.empty(project.getJarIndex());
+				project.setMappings(null);
 			} else {
 				System.err.println("Reading mappings...");
 				EntryTree<EntryMapping> mappings = mappingFormat.read(
@@ -142,7 +136,7 @@ public class EnigmaMcpMain {
 						profile.getMappingSaveParameters(),
 						project.getJarIndex()
 				);
-				remapper = EntryRemapper.mapped(project.getJarIndex(), mappings);
+				project.setMappings(mappings);
 			}
 
 			StdioServerTransportProvider transport = new StdioServerTransportProvider(McpJsonDefaults.getMapper());
@@ -157,7 +151,6 @@ public class EnigmaMcpMain {
 			EnigmaMcpMain app = new EnigmaMcpMain(
 					server,
 					project,
-					remapper,
 					mappingFormat,
 					mappingsFile,
 					profile.getMappingSaveParameters()
@@ -188,7 +181,7 @@ public class EnigmaMcpMain {
 	}
 
 	private void registerTools() {
-		McpTools tools = new McpTools(project, remapper, mappingFormat, mappingsFile, saveParameters);
+		McpTools tools = new McpTools(project, project.getMapper(), mappingFormat, mappingsFile, saveParameters);
 
 		for (McpServerFeatures.SyncToolSpecification spec : tools.allTools()) {
 			server.addTool(spec);
@@ -198,8 +191,8 @@ public class EnigmaMcpMain {
 	private void saveMappings() {
 		try {
 			mappingFormat.write(
-					remapper.getObfToDeobf(),
-					remapper.takeMappingDelta(),
+					project.getMapper().getObfToDeobf(),
+					project.getMapper().takeMappingDelta(),
 					mappingsFile,
 					ProgressListener.none(),
 					saveParameters
