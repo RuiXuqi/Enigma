@@ -17,10 +17,12 @@ import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.analysis.index.EntryIndex;
 import cuchaz.enigma.analysis.index.JarIndex;
-import cuchaz.enigma.source.Decompiler;
+import cuchaz.enigma.classhandle.ClassHandle;
+import cuchaz.enigma.classhandle.ClassHandleError;
+import cuchaz.enigma.classhandle.ClassHandleProvider;
+import cuchaz.enigma.source.DecompiledClassSource;
 import cuchaz.enigma.source.DecompilerService;
 import cuchaz.enigma.source.Decompilers;
-import cuchaz.enigma.source.SourceSettings;
 import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
@@ -31,6 +33,7 @@ import cuchaz.enigma.translation.representation.entry.FieldEntry;
 import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
 import cuchaz.enigma.translation.representation.entry.ParentedEntry;
+import cuchaz.enigma.utils.Result;
 import cuchaz.enigma.utils.validation.ValidationContext;
 
 public class McpTools {
@@ -41,6 +44,7 @@ public class McpTools {
 	private final MappingFormat mappingFormat;
 	private final Path mappingsFile;
 	private final MappingSaveParameters saveParameters;
+	private final ClassHandleProvider classHandleProvider;
 
 	public McpTools(EnigmaProject project,
 			EntryRemapper remapper,
@@ -52,6 +56,7 @@ public class McpTools {
 		this.mappingFormat = mappingFormat;
 		this.mappingsFile = mappingsFile;
 		this.saveParameters = saveParameters;
+		this.classHandleProvider = new ClassHandleProvider(project, Decompilers.VINEFLOWER);
 	}
 
 	public List<McpServerFeatures.SyncToolSpecification> allTools() {
@@ -846,18 +851,14 @@ public class McpTools {
 				tool, (exchange, request) -> {
 			Map<String, Object> args = request.arguments();
 			String className = args.get("class_name").toString();
-			String decompilerName = args.containsKey("decompiler") ? args.get("decompiler")
-					.toString()
-					.toLowerCase() : "vineflower";
+			String decompilerName = args.containsKey("decompiler")
+					? args.get("decompiler").toString().toLowerCase()
+					: "vineflower";
 
 			ClassEntry cls = parseClass(className);
 
 			if (cls == null) {
 				return error("Invalid class name: " + className);
-			}
-
-			if (!project.getJarIndex().getEntryIndex().hasClass(cls)) {
-				return error("Class not found: " + cls.getFullName());
 			}
 
 			DecompilerService decompilerService = pickDecompiler(decompilerName);
@@ -868,15 +869,24 @@ public class McpTools {
 						+ ". Available: vineflower, cfr, procyon, bytecode");
 			}
 
-			try {
-				Decompiler decompiler = decompilerService.create(
-						project.getClassProvider(),
-						new SourceSettings(false, false)
-				);
-				String source = decompiler.getSource(className, remapper).asString();
-				return ok(source);
+			this.classHandleProvider.setDecompilerService(decompilerService);
+
+			ClassHandle handle = this.classHandleProvider.openClass(cls);
+
+			if (handle == null) {
+				return error("Class not found: " + cls.getFullName());
+			}
+
+			try (handle) {
+				Result<DecompiledClassSource, ClassHandleError> result = handle.getSource().get();
+
+				if (result.isOk()) {
+					return ok(result.unwrap().getIndex().getSource());
+				}
+
+				return error(result.unwrapErr().toString());
 			} catch (Exception e) {
-				return error("Failed to decompile class: " + e.getMessage());
+				return error("Failed to decompile class: " + e);
 			}
 		}
 
