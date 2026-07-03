@@ -15,25 +15,76 @@ import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
 import cuchaz.enigma.translation.representation.entry.ParentedEntry;
 
-/// `class <name>`
+/// Formats:
+/// ```
+/// class <name>
+/// method <name>@<class_name> [descriptor]
+/// field <name>@<class_name> [descriptor]
+/// param <name>@<class_name>#<method_name><method_descriptor> [local_index]
+/// ```
+/// where `[]` means optional.
 ///
-/// `method <name>@<class_name> <desc>`
-///
-/// `field <name>@<class_name> <desc>`
-///
-/// `param <name>@<class_name>#<method_name><method_desc> [local_index=]<local_index>`, where `[]` means `local_index=` is optional
-///
-/// In [#parse(java.lang.String)], all three sections are required. In [#parseOrFind(java.lang.String, cuchaz.enigma.analysis.index.JarIndex)], the 3rd section can be omitted, in which case it will try to find an existed entry matching known information
+/// The 3rd space-split section (descriptor / local\_index) is required by [#parse(String)].
+/// [#parseOrFind(String, JarIndex)] allows omitting it, in which case it will search the jar index for matched entry.
 public abstract class EntryDescription {
+	/// @param name full obfuscated class name, e.g. `net/minecraft/world/item/ItemStack`
+	/// @return `"class <name>"` string
+	public static String ofClass(String name) {
+		return "class " + name;
+	}
+
+	/// @param name       method (obfuscated) name (without descriptor)
+	/// @param className  full (obfuscated) class name
+	/// @param descriptor method descriptor, e.g. `(I)V`; `null` omits the 3rd section
+	/// @return `"method <name>@<className> [<descriptor>]"` string
+	public static String ofMethod(String name, String className, @Nullable String descriptor) {
+		if (descriptor == null) {
+			return "method " + name + '@' + className;
+		}
+		return "method " + name + '@' + className + ' ' + descriptor;
+	}
+
+	/// @param name       field (obfuscated) name
+	/// @param className  full (obfuscated) class name
+	/// @param descriptor field descriptor, e.g. `I`; `null` omits the 3rd section
+	/// @return `"field <name>@<className> [<descriptor>]"` string
+	public static String ofField(String name, String className, @Nullable String descriptor) {
+		if (descriptor == null) {
+			return "field " + name + '@' + className;
+		}
+		return "field " + name + '@' + className + ' ' + descriptor;
+	}
+
+	/// @param name             (obfuscated) parameter name (usually a digit string = parameter position)
+	/// @param className        full (obfuscated) class name of the owning class
+	/// @param methodName       (obfuscated) method name
+	/// @param methodDescriptor method descriptor, e.g. `(I)V`
+	/// @param localIndex       local variable index (`null` omits the 3rd section, enabling search in
+	///                         [#parseOrFind(String, JarIndex)])
+	/// @return `"param <name>@<className>#<methodName><methodDescriptor> [local_index=]<localIndex>"` string
+	public static String ofParam(String name, String className, String methodName, String methodDescriptor, @Nullable Integer localIndex) {
+		if (localIndex == null) {
+			return "param " + name + '@' + className + '#' + methodName + methodDescriptor;
+		}
+		return "param " + name + '@' + className + '#' + methodName + methodDescriptor + " " + localIndex;
+	}
+
+	/// Serialize any supported entry to its description string.
+	///
+	/// @param entry a [ClassEntry], [MethodEntry], [FieldEntry], or
+	///              [LocalVariableEntry] (must be [`an argument`][LocalVariableEntry#isArgument()])
+	/// @return description string in canonical format
+	/// @throws IllegalArgumentException if entry is not a supported type, or if a
+	///                                  [LocalVariableEntry] is not an argument
 	public static String of(Entry<?> entry) {
 		if (entry instanceof ClassEntry c) {
-			return "class " + c.getFullName();
+			return ofClass(c.getFullName());
 		} else if (entry instanceof MethodEntry m) {
 			ClassEntry c = m.getParent();
-			return "method " + m.getName() + '@' + c.getFullName() + ' ' + m.getDescriptor();
+			return ofMethod(m.getName(), c.getFullName(), m.getDescriptor());
 		} else if (entry instanceof FieldEntry f) {
 			ClassEntry c = f.getParent();
-			return "field " + f.getName() + '@' + c.getFullName() + ' ' + f.getDescriptor();
+			return ofField(f.getName(), c.getFullName(), f.getDescriptor());
 		} else if (entry instanceof LocalVariableEntry l) {
 			if (!l.isArgument()) {
 				throw new IllegalArgumentException("Not parameter: " + l);
@@ -41,24 +92,43 @@ public abstract class EntryDescription {
 
 			MethodEntry m = l.getParent();
 			ClassEntry c = m.getParent();
-			return "param "
-					+ l.getName()
-					+ "@"
-					+ c.getFullName()
-					+ '#'
-					+ m.getName()
-					+ m.getDescriptor()
-					+ " local_index="
-					+ l.getIndex();
+			return ofParam(l.getName(), c.getFullName(), m.getName(), m.getDescriptor(), l.getIndex());
 		}
 
 		throw new IllegalArgumentException("Unsupported implementation of Entry: " + entry);
 	}
 
+	/// Parse a description string into an entry. All 3 space-split sections are required.
+	///
+	/// This is a convenience for [#parseOrFind(String, JarIndex)] with a `null` index.
+	///
+	/// @param description string in canonical format
+	/// @return the parsed entry
+	/// @throws IllegalArgumentException if parsing fails, or if the 3rd section is missing
+	///                                  (use [#parseOrFind(String, JarIndex)] with an index instead)
 	public static Entry<?> parse(String description) {
 		return parseOrFind(description, null);
 	}
 
+	/// Parse a description string into an entry. When the 3rd space-split section (descriptor /
+	/// local\_index) is omitted and `index` is provided, the method searches the jar index
+	/// for a unique match by name.
+	///
+	/// For `param`: the 3rd section can be either a bare integer (`3`) or
+	/// `local_index=3`. If omitted, the method searches by `(parent method, name)` in
+	/// the jar index.
+	///
+	/// For `class`: no 3rd section applies, `index` is unused.
+	///
+	/// Trailing `-> mappedName` is **not** stripped here; callers must trim it before
+	/// passing, or parsing will fail.
+	///
+	/// @param description string in canonical format; the 3rd section may be omitted
+	/// @param index       jar index for searching; required when the 3rd section is omitted
+	/// @return the parsed (or found) entry
+	/// @throws IllegalArgumentException if the description is malformed, the entry is not in the
+	///                                  index when searching, or the 3rd section is missing and
+	///                                  `index` is `null`
 	public static Entry<?> parseOrFind(String description, @Nullable JarIndex index) {
 		String[] parts = description.split(" ");
 
