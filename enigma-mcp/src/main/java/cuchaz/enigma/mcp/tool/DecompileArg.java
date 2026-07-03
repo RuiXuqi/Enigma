@@ -49,10 +49,11 @@ class DecompileArg {
 				tool, (exchange, request) -> {
 			DecompileArg arg = McpTools.OBJECT_MAPPER.convertValue(request.arguments(), DecompileArg.class);
 
-			ClassEntry cls = McpTools.parseClass(arg.class_name);
-
-			if (cls == null) {
-				return McpTools.error("Invalid class name: " + arg.class_name);
+			ClassEntry cls;
+			try {
+				cls = ClassEntry.parse(arg.class_name);
+			} catch (IllegalArgumentException e) {
+				return McpTools.error(e.getMessage());
 			}
 
 			DecompilerService decompilerService = pickDecompiler(project, arg.decompiler);

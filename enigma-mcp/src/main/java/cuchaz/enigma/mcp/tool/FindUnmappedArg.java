@@ -76,8 +76,7 @@ class FindUnmappedArg {
 			Stream<? extends Entry<?>> stream = entryType.extractEntries(entryIndex);
 
 			if (classFilter != null) {
-				String filter = McpTools.normalizeClassName(classFilter);
-				stream = stream.filter(e -> e.getContainingClass().getFullName().startsWith(filter));
+				stream = stream.filter(e -> e.getContainingClass().getFullName().startsWith(classFilter));
 			}
 
 			if (namePrefix != null) {

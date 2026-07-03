@@ -45,10 +45,11 @@ class ListMembersArg {
 			ListMembersArg arg = McpTools.OBJECT_MAPPER.convertValue(request.arguments(), ListMembersArg.class);
 			String memberType = arg.member_type != null ? arg.member_type : "all";
 
-			ClassEntry cls = McpTools.parseClass(arg.class_name);
-
-			if (cls == null) {
-				return McpTools.error("Invalid class name: " + arg.class_name);
+			ClassEntry cls;
+			try {
+				cls = ClassEntry.parse(arg.class_name);
+			} catch (Exception e) {
+				return McpTools.error(e.getMessage());
 			}
 
 			if (!project.getJarIndex().getEntryIndex().hasClass(cls)) {
@@ -59,9 +60,9 @@ class ListMembersArg {
 			StringBuilder sb = new StringBuilder();
 
 			sb.append("Class: ").append(cls.getFullName());
-			EntryMapping classMapping = McpTools.getMappingOrNull(remapper, cls);
+			EntryMapping classMapping = remapper.getDeobfMapping(cls);
 
-			if (classMapping != null) {
+			if (classMapping.targetName() != null) {
 				sb.append(" -> ").append(classMapping.targetName());
 			}
 

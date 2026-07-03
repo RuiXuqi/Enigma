@@ -1,21 +1,14 @@
 package cuchaz.enigma.mcp.tool;
 
-import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-import com.github.victools.jsonschema.generator.OptionPreset;
-import com.github.victools.jsonschema.generator.SchemaGenerator;
-import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
-import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
-import com.github.victools.jsonschema.generator.SchemaVersion;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.jetbrains.annotations.Nullable;
 import tools.jackson.databind.EnumNamingStrategies;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -25,7 +18,6 @@ import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
 import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.mcp.EntryDescription;
-import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.Entry;
 
 public class McpTools {
@@ -77,44 +69,7 @@ public class McpTools {
 				.build();
 	}
 
-	static void schema(Type mainTargetType, Type... typeParameters) {
-		SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON);
-		SchemaGeneratorConfig config = configBuilder.build();
-		SchemaGenerator generator = new SchemaGenerator(config);
-		JsonNode jsonSchema = generator.generateSchema(mainTargetType, typeParameters);
-
-		System.out.println(jsonSchema.toPrettyString());
-	}
-
 	// -- helpers --
-
-	static String normalizeClassName(String name) {
-		return name.replace('.', '/');
-	}
-
-	@Nullable
-	static ClassEntry parseClass(String className) {
-		if (className == null || className.isEmpty()) {
-			return null;
-		}
-
-		try {
-			return ClassEntry.parse(normalizeClassName(className));
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	@Nullable
-	static EntryMapping getMappingOrNull(EntryRemapper remapper, Entry<?> entry) {
-		EntryMapping mapping = remapper.getDeobfMapping(entry);
-
-		if (mapping == EntryMapping.DEFAULT || mapping.targetName() == null) {
-			return null;
-		}
-
-		return mapping;
-	}
 
 	static String entryDescription(EntryRemapper remapper, Entry<?> entry) {
 		StringBuilder sb = new StringBuilder();
@@ -125,16 +80,15 @@ public class McpTools {
 	static void entryDescription(EntryRemapper remapper, Entry<?> entry, StringBuilder sb) {
 		sb.append(EntryDescription.of(entry));
 
-		EntryMapping mapping = getMappingOrNull(remapper, entry);
+		EntryMapping mapping = remapper.getDeobfMapping(entry);
 
-		if (mapping != null) {
+		if (mapping.targetName() != null) {
 			sb.append(" -> ").append(mapping.targetName());
 		}
 	}
 
 	static boolean isUnmapped(EntryRemapper remapper, Entry<?> entry) {
-		EntryMapping mapping = remapper.getDeobfMapping(entry);
-		return mapping == EntryMapping.DEFAULT || mapping.targetName() == null;
+		return remapper.getDeobfMapping(entry).targetName() == null;
 	}
 
 	// -- Entry resolution: shared between GetEntryArg and RenameArg --
