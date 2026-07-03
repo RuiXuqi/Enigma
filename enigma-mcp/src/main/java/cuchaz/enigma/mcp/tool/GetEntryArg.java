@@ -5,13 +5,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import cuchaz.enigma.mcp.EntryDescription;
-
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 
 import cuchaz.enigma.EnigmaProject;
+import cuchaz.enigma.mcp.EntryDescription;
 import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.representation.entry.ClassEntry;
@@ -59,6 +57,7 @@ class GetEntryArg {
 
 			if (arg.search_by_deobf) {
 				EntryDescription parsed;
+
 				try {
 					parsed = EntryDescription.parse(arg.entry_description);
 				} catch (Exception e) {
@@ -68,9 +67,11 @@ class GetEntryArg {
 				List<Entry<?>> matches = new ArrayList<>();
 				remapper.getObfEntries().forEach(e -> {
 					EntryMapping mapping = remapper.getDeobfMapping(e);
+
 					if (mapping.targetName() == null) {
 						return;
 					}
+
 					if (!parsed.type.filterEntryByType(e)) {
 						return;
 					}
@@ -81,6 +82,7 @@ class GetEntryArg {
 					// For members, also check the owning class's deobf name
 					if (nameMatch && !(e instanceof ClassEntry) && parsed.class_name != null) {
 						ClassEntry containingClass = e.getContainingClass();
+
 						if (containingClass != null) {
 							EntryMapping classMapping = remapper.getDeobfMapping(containingClass);
 							String deobfClass = classMapping.targetName() != null
@@ -104,6 +106,7 @@ class GetEntryArg {
 			}
 
 			Entry<?> entry;
+
 			try {
 				entry = EntryDescription.parseOrFind(arg.entry_description, project.getJarIndex());
 			} catch (Exception e) {

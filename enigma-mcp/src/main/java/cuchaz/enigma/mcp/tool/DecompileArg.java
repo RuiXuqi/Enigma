@@ -9,9 +9,15 @@ import io.modelcontextprotocol.spec.McpSchema;
 import org.jetbrains.annotations.Nullable;
 
 import cuchaz.enigma.EnigmaProject;
+import cuchaz.enigma.classhandle.ClassHandle;
+import cuchaz.enigma.classhandle.ClassHandleError;
+import cuchaz.enigma.classhandle.ClassHandleProvider;
+import cuchaz.enigma.source.DecompiledClassSource;
 import cuchaz.enigma.source.DecompilerService;
 import cuchaz.enigma.source.Decompilers;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
+import cuchaz.enigma.translation.representation.entry.ClassEntry;
+import cuchaz.enigma.utils.Result;
 
 /**
  * @author ZZZank
@@ -37,19 +43,19 @@ class DecompileArg {
 				.description("Decompile a class to Java source code")
 				.build();
 
-		var classHandleProvider = new cuchaz.enigma.classhandle.ClassHandleProvider(project, cuchaz.enigma.source.Decompilers.VINEFLOWER);
+		ClassHandleProvider classHandleProvider = new cuchaz.enigma.classhandle.ClassHandleProvider(project, cuchaz.enigma.source.Decompilers.VINEFLOWER);
 
 		return new McpServerFeatures.SyncToolSpecification(
 				tool, (exchange, request) -> {
 			DecompileArg arg = McpTools.OBJECT_MAPPER.convertValue(request.arguments(), DecompileArg.class);
 
-			var cls = McpTools.parseClass(arg.class_name);
+			ClassEntry cls = McpTools.parseClass(arg.class_name);
 
 			if (cls == null) {
 				return McpTools.error("Invalid class name: " + arg.class_name);
 			}
 
-			var decompilerService = pickDecompiler(project, arg.decompiler);
+			DecompilerService decompilerService = pickDecompiler(project, arg.decompiler);
 
 			if (decompilerService == null) {
 				return McpTools.error("No decompiler found: "
@@ -59,14 +65,14 @@ class DecompileArg {
 
 			classHandleProvider.setDecompilerService(decompilerService);
 
-			var handle = classHandleProvider.openClass(cls);
+			ClassHandle handle = classHandleProvider.openClass(cls);
 
 			if (handle == null) {
 				return McpTools.error("Class not found: " + cls.getFullName());
 			}
 
 			try (handle) {
-				var result = handle.getSource().get();
+				Result<DecompiledClassSource, ClassHandleError> result = handle.getSource().get();
 
 				if (result.isOk()) {
 					return McpTools.ok(result.unwrap().getIndex().getSource());

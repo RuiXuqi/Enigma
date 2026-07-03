@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -23,7 +22,7 @@ class EditMappingArg {
 	public String entry_description;
 	public String new_name;
 	public String javadoc;
-	/** "public", "protected", "private", or "unchanged" */
+	/** "public", "protected", "private", or "unchanged". */
 	public AccessModifier access;
 
 	static McpServerFeatures.SyncToolSpecification createTool(EnigmaProject project, EntryRemapper remapper) {
