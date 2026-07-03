@@ -30,7 +30,7 @@ import cuchaz.enigma.translation.representation.entry.Entry;
 
 public class McpTools {
 	static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
-			.enumNamingStrategy(EnumNamingStrategies.LOWER_CASE)
+			.enumNamingStrategy(EnumNamingStrategies.SNAKE_CASE)
 			.build();
 
 	private final EnigmaProject project;
@@ -55,8 +55,7 @@ public class McpTools {
 		return List.of(
 				SearchClassesArg.createTool(project, remapper),
 				GetEntryArg.createTool(project, remapper),
-				RenameArg.createTool(project, remapper),
-				SetJavadocArg.createTool(remapper),
+				EditMappingArg.createTool(project, remapper),
 				ListMembersArg.createTool(project, remapper),
 				FindUnmappedArg.createTool(project, remapper),
 				DecompileArg.createTool(project, remapper),
