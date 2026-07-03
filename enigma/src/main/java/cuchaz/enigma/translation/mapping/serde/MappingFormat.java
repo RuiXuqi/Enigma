@@ -27,7 +27,7 @@ import cuchaz.enigma.translation.mapping.tree.EntryTree;
 import cuchaz.enigma.utils.I18n;
 
 public enum MappingFormat {
-	MCP(FileType.ZIP, null) {
+	MCP_FILE(FileType.ZIP, null) {
 		private final McpMappingIO io = new McpMappingIO();
 
 		@Override
