@@ -25,8 +25,6 @@ class SaveArg {
 
 	static McpServerFeatures.SyncToolSpecification createTool(
 			EntryRemapper remapper,
-			MappingFormat mappingFormat,
-			Path mappingsFile,
 			MappingSaveParameters saveParameters
 	) {
 		McpSchema.Tool tool = McpSchema.Tool.builder("save", Map.of(
@@ -71,7 +69,7 @@ class SaveArg {
 					return McpTools.error("Format " + arg.format + " expects a directory, but path looks like a file: " + arg.path);
 				}
 			} else {
-				String fileName = mappingsFile.getFileName().toString();
+				String fileName = targetPath.getFileName().toString();
 
 				if (fileType.extensions().stream().noneMatch(fileName::endsWith)) {
 					String expected = String.join(" or ", fileType.extensions());
