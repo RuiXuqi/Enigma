@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import cuchaz.enigma.mcp.EntryDescription;
+
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -13,70 +16,37 @@ import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.Entry;
-import cuchaz.enigma.translation.representation.entry.FieldEntry;
-import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
-import cuchaz.enigma.translation.representation.entry.MethodEntry;
 
 /**
  * @author ZZZank
  */
 class GetEntryArg {
+	public String entry_description;
 	@JsonProperty(required = true)
-	public EntryType type;
-	public String name;
-	public String class_name;
-	public String descriptor;
-	public String method_name;
-	public String method_descriptor;
-	public String description;
+	public EntryDescription.EntryType type;
 	public boolean search_by_deobf = false;
-
-	enum EntryType {
-		CLASS(ClassEntry.class),
-		METHOD(MethodEntry.class),
-		FIELD(FieldEntry.class),
-		PARAM(LocalVariableEntry.class),
-		BY_DESCRIPTION(null),
-		;
-
-		private final Class<? extends Entry<?>> entryType;
-
-		EntryType(Class<? extends Entry<?>> entryType) {
-			this.entryType = entryType;
-		}
-
-		public boolean filterEntryByType(Entry<?> entry) {
-			return entryType == null || entryType.isInstance(entry);
-		}
-	}
 
 	static McpServerFeatures.SyncToolSpecification createTool(EnigmaProject project, EntryRemapper remapper) {
 		McpSchema.Tool tool = McpSchema.Tool.builder("get_entry", Map.of(
 						"type", "object",
 						"properties", Map.of(
+								"entry_description", Map.of(
+										"type", "string",
+										"description", """
+												Entry description in standard format:
+												```
+												class <name>
+												method <name>@<class_name> [descriptor]
+												field <name>@<class_name> [descriptor]
+												param <name>@<class_name>#<method_name><method_descriptor> [local_index]
+												```
+												For search_by_deobf=true, the names in the description are treated as deobfuscated names."""),
 								"type", Map.of(
-										"type", "string"),
-								"name", Map.of(
 										"type", "string",
-										"description", "Original (obfuscated) name. For param, a pure digit string = parameter position (0-based)"),
-								"class_name", Map.of(
-										"type", "string",
-										"description", "JVM internal class name, e.g. path/to/SomeClass"),
-								"descriptor", Map.of(
-										"type", "string",
-										"description", "Member descriptor, e.g. (I)V for method or I for field"),
-								"method_name", Map.of(
-										"type", "string",
-										"description", "Owner method name (for param type)"),
-								"method_descriptor", Map.of(
-										"type", "string",
-										"description", "Owner method descriptor (for param type)"),
-								"description", Map.of(
-										"type", "string",
-										"description", "Entry description in standard format (for by_description type, copy from find_unmapped output)"),
+										"description", "Entry type filter for search_by_deobf mode: class, method, field, param, or by_description"),
 								"search_by_deobf", Map.of(
 										"type", "boolean",
-										"description", "If true, name/class_name are deobfuscated names. Ignored for by_description type.",
+										"description", "If true, treat names in entry_description as deobfuscated names and search by them",
 										"default", false)),
 						"required", List.of("type")
 				))
@@ -87,45 +57,57 @@ class GetEntryArg {
 				tool, (exchange, request) -> {
 			GetEntryArg arg = McpTools.OBJECT_MAPPER.convertValue(request.arguments(), GetEntryArg.class);
 
-			// by_description doesn't need search_by_deobf
-			if (arg.search_by_deobf && !EntryType.BY_DESCRIPTION.equals(arg.type)) {
-				String memberName = arg.name;
+			if (arg.search_by_deobf) {
+				EntryDescription parsed;
+				try {
+					parsed = EntryDescription.parse(arg.entry_description);
+				} catch (Exception e) {
+					return McpTools.error(e.toString());
+				}
+
 				List<Entry<?>> matches = new ArrayList<>();
+				remapper.getObfEntries().forEach(e -> {
+					EntryMapping mapping = remapper.getDeobfMapping(e);
+					if (mapping.targetName() == null) {
+						return;
+					}
+					if (!parsed.type.filterEntryByType(e)) {
+						return;
+					}
 
-				remapper.getObfEntries().forEach(entry -> {
-					EntryMapping mapping = remapper.getDeobfMapping(entry);
+					// Match by deobfuscated name from the description
+					boolean nameMatch = mapping.targetName().equals(parsed.name);
 
-					if (mapping.targetName() != null && arg.type.filterEntryByType(entry)) {
-						boolean nameMatch = mapping.targetName().equals(McpTools.normalizeClassName(arg.class_name))
-								|| mapping.targetName().equals(arg.class_name);
-
-						if (memberName != null) {
-							nameMatch = nameMatch && entry.getName().equals(memberName);
+					// For members, also check the owning class's deobf name
+					if (nameMatch && !(e instanceof ClassEntry) && parsed.class_name != null) {
+						ClassEntry containingClass = e.getContainingClass();
+						if (containingClass != null) {
+							EntryMapping classMapping = remapper.getDeobfMapping(containingClass);
+							String deobfClass = classMapping.targetName() != null
+									? classMapping.targetName()
+									: containingClass.getFullName();
+							nameMatch = deobfClass.equals(parsed.class_name);
 						}
+					}
 
-						if (nameMatch) {
-							matches.add(entry);
-						}
+					if (nameMatch) {
+						matches.add(e);
 					}
 				});
 
 				if (matches.isEmpty()) {
-					return McpTools.error("No entry found with deobfuscated name: " + arg.class_name);
+					return McpTools.error("No " + parsed.type
+							+ " found with deobfuscated name: " + arg.entry_description);
 				}
 
 				return McpTools.ok(entryDetail(remapper, matches.get(0)));
 			}
 
-			StringBuilder errorOut = new StringBuilder();
-			Entry<?> entry = McpTools.resolveEntry(
-					project, remapper,
-					arg.type, arg.name, arg.class_name, arg.descriptor,
-					arg.method_name, arg.method_descriptor, arg.description,
-					errorOut
-			);
-
-			if (entry == null) {
-				return McpTools.error(errorOut.toString());
+			Entry<?> entry;
+			try {
+				entry = EntryDescription.parseOrFind(arg.entry_description, project.getJarIndex());
+			} catch (Exception e) {
+				return McpTools.error(e.toString());
 			}
 
 			return McpTools.ok(entryDetail(remapper, entry));

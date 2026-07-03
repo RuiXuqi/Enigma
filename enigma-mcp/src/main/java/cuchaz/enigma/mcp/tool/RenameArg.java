@@ -4,12 +4,14 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 
 import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
+import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.Entry;
 import cuchaz.enigma.utils.validation.ValidationContext;
 
@@ -18,46 +20,29 @@ import cuchaz.enigma.utils.validation.ValidationContext;
  */
 class RenameArg {
 	@JsonProperty(required = true)
-	public GetEntryArg.EntryType type;
-	@JsonProperty(required = true)
-	public String name;
+	public String entry_description;
 	@JsonProperty(required = true)
 	public String new_name;
-	public String class_name;
-	public String descriptor;
-	public String method_name;
-	public String method_descriptor;
-	public String description;
 
 	static McpServerFeatures.SyncToolSpecification createTool(EnigmaProject project, EntryRemapper remapper) {
 		McpSchema.Tool tool = McpSchema.Tool.builder("rename", Map.of(
 						"type", "object",
 						"properties", Map.of(
-								"type", Map.of(
+								"entry_description", Map.of(
 										"type", "string",
-										"description", "Entry type: class, method, field, param, or by_description"),
-								"name", Map.of(
-										"type", "string",
-										"description", "Original (obfuscated) name. For param, a pure digit string = parameter position (0-based)"),
+										"description", """
+												Formats:
+												```
+												class <name>
+												method <name>@<class_name> [descriptor]
+												field <name>@<class_name> [descriptor]
+												param <name>@<class_name>#<method_name><method_descriptor> [local_index]
+												```
+												When optional parts are omitted, Enigma will try to search for existed entry matching known information."""),
 								"new_name", Map.of(
 										"type", "string",
-										"description", "New deobfuscated name"),
-								"class_name", Map.of(
-										"type", "string",
-										"description", "JVM internal class name, e.g. path/to/SomeClass"),
-								"descriptor", Map.of(
-										"type", "string",
-										"description", "Member descriptor, e.g. (I)V for method or I for field"),
-								"method_name", Map.of(
-										"type", "string",
-										"description", "Owner method name (for param type)"),
-								"method_descriptor", Map.of(
-										"type", "string",
-										"description", "Owner method descriptor (for param type)"),
-								"description", Map.of(
-										"type", "string",
-										"description", "Entry description in standard format (for by_description type, copy from find_unmapped output)")),
-						"required", List.of("type", "name", "new_name")
+										"description", "New deobfuscated name")),
+						"required", List.of("entry_description", "new_name")
 				))
 				.description("Rename a class, method, field, or parameter")
 				.build();
@@ -68,24 +53,19 @@ class RenameArg {
 			String newName = arg.new_name;
 
 			StringBuilder errorOut = new StringBuilder();
-			Entry<?> entry = McpTools.resolveEntry(
-					project, remapper,
-					arg.type, arg.name, arg.class_name, arg.descriptor,
-					arg.method_name, arg.method_descriptor, arg.description,
-					errorOut
-			);
+			Entry<?> entry = McpTools.resolveEntry(project, arg.entry_description, errorOut);
 
 			if (entry == null) {
 				return McpTools.error(errorOut.toString());
 			}
 
 			// Normalize class name
-			if (arg.type == GetEntryArg.EntryType.CLASS) {
+			if (entry instanceof ClassEntry) {
 				newName = McpTools.normalizeClassName(newName);
 			}
 
 			ValidationContext vc = new ValidationContext();
-			EntryMapping newMapping = new EntryMapping(newName);
+			EntryMapping newMapping = remapper.getDeobfMapping(entry).withName(newName);
 			remapper.validatePutMapping(vc, entry, newMapping);
 
 			if (!vc.canProceed()) {
