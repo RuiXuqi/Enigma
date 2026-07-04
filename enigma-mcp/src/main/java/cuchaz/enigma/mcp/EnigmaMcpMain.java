@@ -8,10 +8,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import cuchaz.enigma.translation.mapping.EntryRemapper;
 
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -24,31 +26,22 @@ import cuchaz.enigma.Enigma;
 import cuchaz.enigma.EnigmaProfile;
 import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.ProgressListener;
-import cuchaz.enigma.mcp.tool.McpTools;
+import cuchaz.enigma.classhandle.ClassHandleProvider;
+import cuchaz.enigma.mcp.tool.DecompileTool;
+import cuchaz.enigma.mcp.tool.EditMappingTool;
+import cuchaz.enigma.mcp.tool.FindUnmappedTool;
+import cuchaz.enigma.mcp.tool.GetEntryTool;
+import cuchaz.enigma.mcp.tool.ListMembersTool;
+import cuchaz.enigma.mcp.tool.SaveTool;
+import cuchaz.enigma.mcp.tool.SearchClassesTool;
+import cuchaz.enigma.mcp.tool.TypedArgTool;
+import cuchaz.enigma.source.Decompilers;
 import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
 import cuchaz.enigma.translation.mapping.serde.MappingParseException;
-import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
 
 public class EnigmaMcpMain {
-	private final McpSyncServer server;
-	private final EnigmaProject project;
-	private final MappingFormat mappingFormat;
-	private final Path mappingsFile;
-	private final MappingSaveParameters saveParameters;
-
-	public EnigmaMcpMain(McpSyncServer server,
-			EnigmaProject project,
-			MappingFormat mappingFormat,
-			Path mappingsFile,
-			MappingSaveParameters saveParameters) {
-		this.server = server;
-		this.project = project;
-		this.mappingFormat = mappingFormat;
-		this.mappingsFile = mappingsFile;
-		this.saveParameters = saveParameters;
-	}
 
 	public static void main(String[] args) {
 		OptionParser parser = new OptionParser();
@@ -152,32 +145,28 @@ public class EnigmaMcpMain {
 							.build())
 					.build();
 
-			EnigmaMcpMain app = new EnigmaMcpMain(
-					server,
-					project,
-					mappingFormat,
-					mappingsFile,
-					profile.getMappingSaveParameters()
-			);
-			app.registerTools();
+			EntryRemapper remapper = project.getMapper();
+			Stream.of(
+					new SearchClassesTool(project, remapper),
+					new GetEntryTool(project, remapper),
+					new EditMappingTool(project, remapper),
+					new ListMembersTool(project, remapper),
+					new FindUnmappedTool(project, remapper),
+					new DecompileTool(project, remapper, new ClassHandleProvider(project, Decompilers.VINEFLOWER)),
+					new SaveTool(remapper, profile.getMappingSaveParameters())
+			)
+					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec))
+					.forEach(server::addTool);
 
-			System.err.println("enigma-mcp server started");
+			System.err.println("enigma-mcp server initialized");
 
 			Thread.currentThread().join();
 		} catch (IOException | MappingParseException | IllegalArgumentException e) {
 			System.err.println("Error starting enigma-mcp server!");
-			e.printStackTrace();
+			e.printStackTrace(System.err);
 			System.exit(1);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-		}
-	}
-
-	private void registerTools() {
-		McpTools tools = new McpTools(project, project.getMapper(), mappingFormat, mappingsFile, saveParameters);
-
-		for (McpServerFeatures.SyncToolSpecification spec : tools.allTools()) {
-			server.addTool(spec);
 		}
 	}
 

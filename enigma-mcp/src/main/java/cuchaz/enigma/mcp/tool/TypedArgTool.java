@@ -18,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * @author ZZZank
  */
-interface TypedArgTool<T> {
+public interface TypedArgTool<T> {
 	SchemaGeneratorConfig COMMON_CONFIG = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
 			.with(new JacksonSchemaModule(JacksonOption.RESPECT_JSONPROPERTY_REQUIRED))
 			.build();

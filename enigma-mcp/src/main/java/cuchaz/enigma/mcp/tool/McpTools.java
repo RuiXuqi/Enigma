@@ -1,57 +1,17 @@
 package cuchaz.enigma.mcp.tool;
 
-import java.nio.file.Path;
 import java.util.List;
 
-import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.jetbrains.annotations.Nullable;
-import tools.jackson.databind.EnumNamingStrategies;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
 import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.mcp.EntryDescription;
 import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
-import cuchaz.enigma.translation.mapping.serde.MappingFormat;
-import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.translation.representation.entry.Entry;
 
 public class McpTools {
-	static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
-			.enumNamingStrategy(EnumNamingStrategies.SNAKE_CASE)
-			.build();
-
-	private final EnigmaProject project;
-	private final EntryRemapper remapper;
-	private final MappingFormat mappingFormat;
-	private final Path mappingsFile;
-	private final MappingSaveParameters saveParameters;
-
-	public McpTools(EnigmaProject project,
-			EntryRemapper remapper,
-			MappingFormat mappingFormat,
-			Path mappingsFile,
-			MappingSaveParameters saveParameters) {
-		this.project = project;
-		this.remapper = remapper;
-		this.mappingFormat = mappingFormat;
-		this.mappingsFile = mappingsFile;
-		this.saveParameters = saveParameters;
-	}
-
-	public List<McpServerFeatures.SyncToolSpecification> allTools() {
-		return List.of(
-				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new SearchClassesTool(project, remapper)),
-				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new GetEntryTool(project, remapper)),
-				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new EditMappingTool(project, remapper)),
-				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new ListMembersTool(project, remapper)),
-				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new FindUnmappedTool(project, remapper)),
-				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new DecompileTool(project, remapper)),
-				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new SaveTool(remapper, saveParameters))
-		);
-	}
 
 	static McpSchema.CallToolResult ok(String text) {
 		return McpSchema.CallToolResult.builder()
