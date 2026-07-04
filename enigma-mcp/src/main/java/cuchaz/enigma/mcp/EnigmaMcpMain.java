@@ -6,12 +6,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -55,12 +54,7 @@ public class EnigmaMcpMain {
 		OptionSpec<Path> mappingsOpt = parser.accepts("mapping", "Mapping file or directory to open at startup. Ignoring this and 'mapping-format' allows starting from an empty mapping")
 				.withOptionalArg()
 				.withValuesConvertedBy(PathConverter.INSTANCE);
-		OptionSpec<MappingFormat> mappingFormatOpt = parser.accepts(
-				"mapping-format", "Mapping format name (case-insensitive): " + Arrays.stream(MappingFormat.values())
-						.map(Enum::name)
-						.map(s -> s.toLowerCase(Locale.ROOT))
-						.collect(Collectors.joining(", "))
-		)
+		OptionSpec<MappingFormat> mappingFormatOpt = parser.accepts("mapping-format", "Mapping format name (case-insensitive): " + Arrays.toString(MappingFormat.values()))
 				.withOptionalArg()
 				.withValuesConvertedBy(new EnumConverter<>(MappingFormat.class) {
 				});
@@ -102,6 +96,8 @@ public class EnigmaMcpMain {
 			List<Path> libraries,
 			MappingFormat mappingFormat,
 			Path mappingsFile) {
+		McpSyncServer server = null;
+
 		try {
 			EnigmaProfile profile = profileFile != null
 					? EnigmaProfile.read(profileFile)
@@ -162,7 +158,7 @@ public class EnigmaMcpMain {
 					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec))
 					.toList();
 
-			McpSyncServer server = McpServer.sync(transport)
+			server = McpServer.sync(transport)
 					.serverInfo("enigma-mcp", Enigma.VERSION)
 					.capabilities(McpSchema.ServerCapabilities.builder()
 							.tools(true)
@@ -176,8 +172,17 @@ public class EnigmaMcpMain {
 		} catch (IOException | MappingParseException | IllegalArgumentException e) {
 			System.err.println("Error starting enigma-mcp server!");
 			e.printStackTrace(System.err);
+
+			if (server != null) {
+				server.closeGracefully();
+			}
+
 			System.exit(1);
 		} catch (InterruptedException e) {
+			if (server != null) {
+				server.closeGracefully();
+			}
+
 			Thread.currentThread().interrupt();
 		}
 	}
