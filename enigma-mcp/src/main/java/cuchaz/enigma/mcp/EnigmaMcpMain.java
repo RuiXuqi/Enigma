@@ -149,25 +149,26 @@ public class EnigmaMcpMain {
 
 			StdioServerTransportProvider transport = new StdioServerTransportProvider(McpJsonDefaults.getMapper());
 
+			EntryRemapper remapper = project.getMapper();
+			List<McpServerFeatures.SyncToolSpecification> tools = Stream.of(
+							new SearchClassesTool(project, remapper),
+							new GetEntryTool(project, remapper),
+							new EditMappingTool(project, remapper),
+							new ListMembersTool(project, remapper),
+							new FindUnmappedTool(project, remapper),
+							new DecompileTool(project, remapper, new ClassHandleProvider(project, Decompilers.VINEFLOWER)),
+							new SaveTool(remapper, profile.getMappingSaveParameters())
+					)
+					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec))
+					.toList();
+
 			McpSyncServer server = McpServer.sync(transport)
 					.serverInfo("enigma-mcp", Enigma.VERSION)
 					.capabilities(McpSchema.ServerCapabilities.builder()
 							.tools(true)
 							.build())
+					.tools(tools)
 					.build();
-
-			EntryRemapper remapper = project.getMapper();
-			Stream.of(
-					new SearchClassesTool(project, remapper),
-					new GetEntryTool(project, remapper),
-					new EditMappingTool(project, remapper),
-					new ListMembersTool(project, remapper),
-					new FindUnmappedTool(project, remapper),
-					new DecompileTool(project, remapper, new ClassHandleProvider(project, Decompilers.VINEFLOWER)),
-					new SaveTool(remapper, profile.getMappingSaveParameters())
-			)
-					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec))
-					.forEach(server::addTool);
 
 			System.err.println("enigma-mcp server initialized");
 
