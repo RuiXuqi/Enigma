@@ -19,7 +19,7 @@ import cuchaz.enigma.utils.validation.ValidationContext;
 public record EditMappingTool(EnigmaProject project, EntryRemapper remapper) implements TypedArgTool<EditMappingTool.ArgObject> {
 	@Override
 	public String name() {
-		return "set_mapping";
+		return "edit_mapping";
 	}
 
 	@Override
@@ -108,7 +108,7 @@ public record EditMappingTool(EnigmaProject project, EntryRemapper remapper) imp
 		@JsonPropertyDescription("Javadoc text to set (empty string clears javadoc)")
 		public String javadoc;
 
-		@JsonPropertyDescription("Access modifier: public, protected, private, or unchanged")
+		@JsonPropertyDescription("Access modifier")
 		public AccessModifier access;
 	}
 }

@@ -133,10 +133,6 @@ public record GetEntryTool(EnigmaProject project, EntryRemapper remapper) implem
 				For search_by_deobf=true, the names in the description are treated as deobfuscated names.""")
 		public String entry_description;
 
-		@JsonProperty(required = true)
-		@JsonPropertyDescription("Entry type filter for search_by_deobf mode: class, method, field, param, or by_description")
-		public EntryDescription.EntryType type;
-
 		@JsonPropertyDescription("If true, treat names in entry_description as deobfuscated names and search by them")
 		public boolean search_by_deobf = false;
 	}

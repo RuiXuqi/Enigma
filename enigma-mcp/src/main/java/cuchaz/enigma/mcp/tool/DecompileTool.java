@@ -106,7 +106,7 @@ public record DecompileTool(EnigmaProject project, EntryRemapper remapper) imple
 		@JsonPropertyDescription("Obfuscated class name to decompile")
 		public String class_name;
 
-		@JsonPropertyDescription("Decompiler to use: vineflower, cfr, procyon, bytecode")
+		@JsonPropertyDescription("Decompiler to use: vineflower, cfr, procyon, bytecode. Defaults to vineflower")
 		public String decompiler = "vineflower";
 	}
 }
