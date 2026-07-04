@@ -77,6 +77,7 @@ public record SearchClassesTool(EnigmaProject project, EntryRemapper remapper) i
 		@JsonProperty(required = true)
 		@JsonPropertyDescription("Class name pattern to search for")
 		public String query;
+
 		@JsonPropertyDescription("Search by obfuscated name")
 		public boolean obfuscated = true;
 	}

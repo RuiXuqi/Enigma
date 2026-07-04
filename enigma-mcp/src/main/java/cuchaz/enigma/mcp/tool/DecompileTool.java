@@ -21,7 +21,7 @@ import cuchaz.enigma.utils.Result;
 /**
  * @author ZZZank
  */
-public record DecompileTool(EnigmaProject project, EntryRemapper remapper) implements TypedArgTool<DecompileTool.ArgObject> {
+public record DecompileTool(EnigmaProject project, EntryRemapper remapper, ClassHandleProvider classHandleProvider) implements TypedArgTool<DecompileTool.ArgObject> {
 	@Override
 	public String name() {
 		return "decompile";
@@ -54,12 +54,9 @@ public record DecompileTool(EnigmaProject project, EntryRemapper remapper) imple
 		DecompilerService decompilerService = pickDecompiler(project, arg.decompiler);
 
 		if (decompilerService == null) {
-			return McpTools.error("No decompiler found: "
-					+ arg.decompiler
-					+ ". Available: vineflower, cfr, procyon, bytecode");
+			return McpTools.error("Cannot find decompiler with name: " + arg.decompiler);
 		}
 
-		ClassHandleProvider classHandleProvider = new ClassHandleProvider(project, Decompilers.VINEFLOWER);
 		classHandleProvider.setDecompilerService(decompilerService);
 
 		ClassHandle handle = classHandleProvider.openClass(cls);
@@ -111,7 +108,8 @@ public record DecompileTool(EnigmaProject project, EntryRemapper remapper) imple
 		@JsonPropertyDescription("Obfuscated class name to decompile")
 		public String class_name;
 
-		@JsonPropertyDescription("Decompiler to use: vineflower, cfr, procyon, bytecode. Defaults to vineflower")
-		public String decompiler = "vineflower";
+		@JsonProperty(defaultValue = "vineflower")
+		@JsonPropertyDescription("Decompiler to use: vineflower, cfr, procyon, bytecode, or other registered decompiler service")
+		public String decompiler;
 	}
 }

@@ -12,7 +12,6 @@ import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.representation.entry.Entry;
 
 public class McpTools {
-
 	static McpSchema.CallToolResult ok(String text) {
 		return McpSchema.CallToolResult.builder()
 				.addTextContent(text)

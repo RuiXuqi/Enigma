@@ -74,6 +74,7 @@ public record SaveTool(EntryRemapper remapper, MappingSaveParameters saveParamet
 	public static class ArgObject {
 		@JsonProperty(required = true)
 		public MappingFormat format;
+
 		@JsonProperty(required = true)
 		@JsonPropertyDescription("File path to save mappings to")
 		public String path;
