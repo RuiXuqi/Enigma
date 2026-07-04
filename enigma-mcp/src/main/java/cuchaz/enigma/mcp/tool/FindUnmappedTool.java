@@ -18,7 +18,7 @@ import cuchaz.enigma.translation.representation.entry.MethodEntry;
 /**
  * @author ZZZank
  */
-public record FindUnmappedTool(EnigmaProject project, EntryRemapper remapper) implements TypedArgTool<FindUnmappedTool.ArgObject> {
+public record FindUnmappedTool(EnigmaProject project) implements TypedArgTool<FindUnmappedTool.ArgObject> {
 	@Override
 	public String name() {
 		return "find_unmapped";
@@ -40,12 +40,14 @@ public record FindUnmappedTool(EnigmaProject project, EntryRemapper remapper) im
 			McpSchema.CallToolRequest request,
 			ArgObject arg
 	) {
+		EntryRemapper remapper = project.getMapper();
+		EntryIndex entryIndex = project.getJarIndex().getEntryIndex();
+
 		String classFilter = arg.class_filter;
 		String namePrefix = arg.name_prefix;
 		String nameSuffix = arg.name_suffix;
 		int limit = arg.limit != null ? arg.limit : 50;
 
-		EntryIndex entryIndex = project.getJarIndex().getEntryIndex();
 		StringBuilder sb = new StringBuilder();
 
 		Stream<? extends Entry<?>> stream = arg.entry_type.extractEntries(entryIndex);

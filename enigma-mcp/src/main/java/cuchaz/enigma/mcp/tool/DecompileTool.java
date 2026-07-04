@@ -14,14 +14,13 @@ import cuchaz.enigma.classhandle.ClassHandleProvider;
 import cuchaz.enigma.source.DecompiledClassSource;
 import cuchaz.enigma.source.DecompilerService;
 import cuchaz.enigma.source.Decompilers;
-import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.utils.Result;
 
 /**
  * @author ZZZank
  */
-public record DecompileTool(EnigmaProject project, EntryRemapper remapper, ClassHandleProvider classHandleProvider) implements TypedArgTool<DecompileTool.ArgObject> {
+public record DecompileTool(EnigmaProject project, ClassHandleProvider classHandleProvider) implements TypedArgTool<DecompileTool.ArgObject> {
 	@Override
 	public String name() {
 		return "decompile";

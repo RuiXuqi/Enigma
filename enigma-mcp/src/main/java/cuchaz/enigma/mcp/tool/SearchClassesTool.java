@@ -15,7 +15,7 @@ import cuchaz.enigma.translation.representation.entry.ClassEntry;
 /**
  * @author ZZZank
  */
-public record SearchClassesTool(EnigmaProject project, EntryRemapper remapper) implements TypedArgTool<SearchClassesTool.ArgObject> {
+public record SearchClassesTool(EnigmaProject project) implements TypedArgTool<SearchClassesTool.ArgObject> {
 	@Override
 	public String name() {
 		return "search_class";
@@ -37,7 +37,9 @@ public record SearchClassesTool(EnigmaProject project, EntryRemapper remapper) i
 			McpSchema.CallToolRequest request,
 			ArgObject arg
 	) {
+		EntryRemapper remapper = project.getMapper();
 		EntryIndex entryIndex = project.getJarIndex().getEntryIndex();
+
 		StringBuilder sb = new StringBuilder();
 		int count = 0;
 

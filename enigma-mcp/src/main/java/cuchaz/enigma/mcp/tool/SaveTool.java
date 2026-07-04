@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
 
+import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
@@ -17,7 +18,7 @@ import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 /**
  * @author ZZZank
  */
-public record SaveTool(EntryRemapper remapper, MappingSaveParameters saveParameters) implements TypedArgTool<SaveTool.ArgObject> {
+public record SaveTool(EnigmaProject project, MappingSaveParameters saveParameters) implements TypedArgTool<SaveTool.ArgObject> {
 	@Override
 	public String name() {
 		return "save";
@@ -34,6 +35,8 @@ public record SaveTool(EntryRemapper remapper, MappingSaveParameters saveParamet
 			McpSchema.CallToolRequest request,
 			ArgObject arg
 	) {
+		EntryRemapper remapper = project.getMapper();
+
 		if (!arg.format.isWritable()) {
 			return McpTools.error("Mapping format " + arg.format + " does not support writing. Writable formats: " + MappingFormat.getWritableFormats());
 		}

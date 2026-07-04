@@ -21,7 +21,7 @@ import cuchaz.enigma.translation.representation.entry.ParentedEntry;
 /**
  * @author ZZZank
  */
-public record ListMembersTool(EnigmaProject project, EntryRemapper remapper) implements TypedArgTool<ListMembersTool.ArgObject> {
+public record ListMembersTool(EnigmaProject project) implements TypedArgTool<ListMembersTool.ArgObject> {
 	@Override
 	public String name() {
 		return "list_members";
@@ -43,6 +43,9 @@ public record ListMembersTool(EnigmaProject project, EntryRemapper remapper) imp
 			McpSchema.CallToolRequest request,
 			ArgObject arg
 	) {
+		EntryRemapper remapper = project.getMapper();
+		JarIndex jarIndex = project.getJarIndex();
+
 		String memberType = arg.member_type != null ? arg.member_type : "all";
 
 		ClassEntry cls;
@@ -53,11 +56,10 @@ public record ListMembersTool(EnigmaProject project, EntryRemapper remapper) imp
 			return McpTools.error(e.getMessage());
 		}
 
-		if (!project.getJarIndex().getEntryIndex().hasClass(cls)) {
+		if (!jarIndex.getEntryIndex().hasClass(cls)) {
 			return McpTools.error("Class not found: " + cls.getFullName());
 		}
 
-		JarIndex jarIndex = project.getJarIndex();
 		StringBuilder sb = new StringBuilder();
 
 		sb.append("Class: ").append(cls.getFullName());

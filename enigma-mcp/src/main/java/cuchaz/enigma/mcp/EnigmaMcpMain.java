@@ -35,7 +35,6 @@ import cuchaz.enigma.mcp.tool.SearchClassesTool;
 import cuchaz.enigma.mcp.tool.TypedArgTool;
 import cuchaz.enigma.source.Decompilers;
 import cuchaz.enigma.translation.mapping.EntryMapping;
-import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
 import cuchaz.enigma.translation.mapping.serde.MappingParseException;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
@@ -145,15 +144,14 @@ public class EnigmaMcpMain {
 
 			StdioServerTransportProvider transport = new StdioServerTransportProvider(McpJsonDefaults.getMapper());
 
-			EntryRemapper remapper = project.getMapper();
 			List<McpServerFeatures.SyncToolSpecification> tools = Stream.of(
-							new SearchClassesTool(project, remapper),
-							new GetEntryTool(project, remapper),
-							new EditMappingTool(project, remapper),
-							new ListMembersTool(project, remapper),
-							new FindUnmappedTool(project, remapper),
-							new DecompileTool(project, remapper, new ClassHandleProvider(project, Decompilers.VINEFLOWER)),
-							new SaveTool(remapper, profile.getMappingSaveParameters())
+							new SearchClassesTool(project),
+							new GetEntryTool(project),
+							new EditMappingTool(project),
+							new ListMembersTool(project),
+							new FindUnmappedTool(project),
+							new DecompileTool(project, new ClassHandleProvider(project, Decompilers.VINEFLOWER)),
+							new SaveTool(project, profile.getMappingSaveParameters())
 					)
 					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec))
 					.toList();

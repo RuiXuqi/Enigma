@@ -18,7 +18,7 @@ import cuchaz.enigma.translation.representation.entry.Entry;
 /**
  * @author ZZZank
  */
-public record GetEntryTool(EnigmaProject project, EntryRemapper remapper) implements TypedArgTool<GetEntryTool.ArgObject> {
+public record GetEntryTool(EnigmaProject project) implements TypedArgTool<GetEntryTool.ArgObject> {
 	@Override
 	public String name() {
 		return "get_entry";
@@ -40,6 +40,8 @@ public record GetEntryTool(EnigmaProject project, EntryRemapper remapper) implem
 			McpSchema.CallToolRequest request,
 			ArgObject arg
 	) {
+		EntryRemapper remapper = project.getMapper();
+
 		if (arg.search_by_deobf) {
 			EntryDescription parsed;
 

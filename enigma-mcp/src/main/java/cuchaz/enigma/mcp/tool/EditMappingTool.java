@@ -16,7 +16,7 @@ import cuchaz.enigma.utils.validation.ValidationContext;
 /**
  * @author ZZZank
  */
-public record EditMappingTool(EnigmaProject project, EntryRemapper remapper) implements TypedArgTool<EditMappingTool.ArgObject> {
+public record EditMappingTool(EnigmaProject project) implements TypedArgTool<EditMappingTool.ArgObject> {
 	@Override
 	public String name() {
 		return "edit_mapping";
@@ -33,6 +33,8 @@ public record EditMappingTool(EnigmaProject project, EntryRemapper remapper) imp
 			McpSchema.CallToolRequest request,
 			ArgObject arg
 	) {
+		EntryRemapper remapper = project.getMapper();
+
 		StringBuilder errorOut = new StringBuilder();
 		Entry<?> entry = McpTools.resolveEntry(project, arg.entry_description, errorOut);
 
