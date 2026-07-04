@@ -2,8 +2,6 @@ package cuchaz.enigma.mcp.tool;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -45,13 +43,13 @@ public class McpTools {
 
 	public List<McpServerFeatures.SyncToolSpecification> allTools() {
 		return List.of(
-				SearchClassesArg.createTool(project, remapper),
-				GetEntryArg.createTool(project, remapper),
-				EditMappingArg.createTool(project, remapper),
-				ListMembersArg.createTool(project, remapper),
-				FindUnmappedArg.createTool(project, remapper),
-				DecompileArg.createTool(project, remapper),
-				SaveArg.createTool(remapper, mappingFormat, mappingsFile, saveParameters)
+				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new SearchClassesTool(project, remapper)),
+				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new GetEntryTool(project, remapper)),
+				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new EditMappingTool(project, remapper)),
+				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new ListMembersTool(project, remapper)),
+				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new FindUnmappedTool(project, remapper)),
+				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new DecompileTool(project, remapper)),
+				TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, new SaveTool(remapper, saveParameters))
 		);
 	}
 
@@ -91,10 +89,10 @@ public class McpTools {
 		return remapper.getDeobfMapping(entry).targetName() == null;
 	}
 
-	// -- Entry resolution: shared between GetEntryArg and RenameArg --
+	// -- Entry resolution: shared between GetEntryTool and RenameArg --
 
 	/**
-	 * Resolve an entry from a single description string. Used by GetEntryArg and RenameArg.
+	 * Resolve an entry from a single description string. Used by GetEntryTool and RenameArg.
 	 */
 	@Nullable
 	static Entry<?> resolveEntry(EnigmaProject project, String description,

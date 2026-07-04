@@ -7,6 +7,11 @@ dependencies {
 	implementation project(':enigma')
 	implementation 'net.sf.jopt-simple:jopt-simple:6.0-alpha-3'
 	implementation 'io.modelcontextprotocol.sdk:mcp:2.0.0'
+
+	// Source: https://mvnrepository.com/artifact/com.github.victools/jsonschema-generator
+	implementation("com.github.victools:jsonschema-generator:5.0.0")
+	// Source: https://mvnrepository.com/artifact/com.github.victools/jsonschema-module-jackson
+	implementation("com.github.victools:jsonschema-module-jackson:5.0.0")
 }
 
 application {

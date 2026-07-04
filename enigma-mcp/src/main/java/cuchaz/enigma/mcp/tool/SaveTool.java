@@ -35,7 +35,7 @@ public record SaveTool(EntryRemapper remapper, MappingSaveParameters saveParamet
 			ArgObject arg
 	) {
 		if (!arg.format.isWritable()) {
-			return McpTools.error("Mapping format " + arg.format + " does not support writing");
+			return McpTools.error("Mapping format " + arg.format + " does not support writing. Writable formats: " + MappingFormat.getWritableFormats());
 		}
 
 		Path targetPath = Path.of(arg.path);
