@@ -11,11 +11,11 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 import cuchaz.enigma.EnigmaProject;
+import cuchaz.enigma.mcp.EntryDescription;
 import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
 import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
-import cuchaz.enigma.mcp.EntryDescription;
 import cuchaz.enigma.translation.representation.entry.Entry;
 
 public class McpTools {
@@ -95,8 +95,7 @@ public class McpTools {
 	 * Resolve an entry from a single description string. Used by GetEntryTool and RenameArg.
 	 */
 	@Nullable
-	static Entry<?> resolveEntry(EnigmaProject project, String description,
-			StringBuilder errorOut) {
+	static Entry<?> resolveEntry(EnigmaProject project, String description, StringBuilder errorOut) {
 		try {
 			// Strip optional trailing " -> mappedName"
 			String desc = description;
@@ -124,14 +123,5 @@ public class McpTools {
 			errorOut.append(e.getClass().getSimpleName()).append(':').append(e.getMessage());
 			return null;
 		}
-	}
-
-	// -- mapping format helpers --
-
-	static String availableFormats() {
-		return MappingFormat.getWritableFormats()
-				.stream()
-				.map(e -> e.name().toLowerCase(Locale.ROOT))
-				.collect(Collectors.joining(", "));
 	}
 }

@@ -108,7 +108,10 @@ public class EnigmaMcpMain {
 			System.err.println("Indexing jar...");
 			EnigmaProject project = enigma.openJars(jars, libraries, ProgressListener.none());
 
-			MappingFormat mappingFormat = parseMappingFormat(mappingFormatStr);
+			MappingFormat mappingFormat = Arrays.stream(MappingFormat.values())
+					.filter(format -> format.name().equalsIgnoreCase(mappingFormatStr))
+					.findFirst()
+					.orElseThrow(() -> new IllegalArgumentException("Unknown mapping format: " + mappingFormatStr));
 
 			// Validate mapping file path matches the format's expected file type
 			MappingFormat.FileType fileType = mappingFormat.getFileType();
@@ -168,16 +171,6 @@ public class EnigmaMcpMain {
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
-	}
-
-	private static MappingFormat parseMappingFormat(String name) {
-		for (MappingFormat format : MappingFormat.values()) {
-			if (format.name().equalsIgnoreCase(name)) {
-				return format;
-			}
-		}
-
-		throw new IllegalArgumentException("Unknown mapping format: " + name);
 	}
 
 	private void registerTools() {

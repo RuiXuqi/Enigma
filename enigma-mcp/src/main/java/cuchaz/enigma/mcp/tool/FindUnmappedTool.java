@@ -1,7 +1,6 @@
 package cuchaz.enigma.mcp.tool;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
