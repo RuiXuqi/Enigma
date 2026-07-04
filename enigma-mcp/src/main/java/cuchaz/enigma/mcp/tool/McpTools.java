@@ -124,4 +124,8 @@ public class McpTools {
 			return null;
 		}
 	}
+
+	static McpSchema.ToolAnnotations annotateReadOnly() {
+		return McpSchema.ToolAnnotations.builder().readOnlyHint(true).build();
+	}
 }

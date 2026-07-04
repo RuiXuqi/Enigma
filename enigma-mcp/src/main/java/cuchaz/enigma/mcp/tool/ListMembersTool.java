@@ -33,6 +33,11 @@ public record ListMembersTool(EnigmaProject project, EntryRemapper remapper) imp
 	}
 
 	@Override
+	public McpSchema.Tool.Builder configureToolBuilder(McpSchema.Tool.Builder builder) {
+		return builder.annotations(McpTools.annotateReadOnly());
+	}
+
+	@Override
 	public McpSchema.CallToolResult callTool(
 			McpSyncServerExchange exchange,
 			McpSchema.CallToolRequest request,

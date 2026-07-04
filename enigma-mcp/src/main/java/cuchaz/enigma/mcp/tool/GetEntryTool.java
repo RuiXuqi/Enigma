@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -28,6 +27,11 @@ public record GetEntryTool(EnigmaProject project, EntryRemapper remapper) implem
 	@Override
 	public Class<ArgObject> argObjectType() {
 		return ArgObject.class;
+	}
+
+	@Override
+	public McpSchema.Tool.Builder configureToolBuilder(McpSchema.Tool.Builder builder) {
+		return builder.annotations(McpTools.annotateReadOnly());
 	}
 
 	@Override

@@ -45,13 +45,13 @@ interface TypedArgTool<T> {
 		});
 	}
 
-	default McpSchema.Tool.Builder configureToolBuilder(McpSchema.Tool.Builder builder) {
-		return builder;
-	}
-
 	String name();
 
 	Class<T> argObjectType();
+
+	default McpSchema.Tool.Builder configureToolBuilder(McpSchema.Tool.Builder builder) {
+		return builder;
+	}
 
 	McpSchema.CallToolResult callTool(McpSyncServerExchange exchange, McpSchema.CallToolRequest request, T arg);
 }
