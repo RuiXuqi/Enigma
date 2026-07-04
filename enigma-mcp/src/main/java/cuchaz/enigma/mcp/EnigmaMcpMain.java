@@ -160,7 +160,6 @@ public class EnigmaMcpMain {
 
 			System.err.println("enigma-mcp server started");
 
-			Runtime.getRuntime().addShutdownHook(new Thread(app::saveMappings));
 			Thread.currentThread().join();
 		} catch (IOException | MappingParseException | IllegalArgumentException e) {
 			System.err.println("Error starting enigma-mcp server!");
@@ -186,21 +185,6 @@ public class EnigmaMcpMain {
 
 		for (McpServerFeatures.SyncToolSpecification spec : tools.allTools()) {
 			server.addTool(spec);
-		}
-	}
-
-	private void saveMappings() {
-		try {
-			mappingFormat.write(
-					project.getMapper().getObfToDeobf(),
-					project.getMapper().takeMappingDelta(),
-					mappingsFile,
-					ProgressListener.none(),
-					saveParameters
-			);
-		} catch (Exception e) {
-			System.err.println("Failed to save mappings!");
-			e.printStackTrace();
 		}
 	}
 
