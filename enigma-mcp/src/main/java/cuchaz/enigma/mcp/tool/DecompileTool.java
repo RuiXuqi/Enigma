@@ -1,11 +1,12 @@
 package cuchaz.enigma.mcp.tool;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
-import org.jetbrains.annotations.Nullable;
 
 import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.classhandle.ClassHandle;
@@ -50,13 +51,15 @@ public record DecompileTool(EnigmaProject project, ClassHandleProvider classHand
 			return McpTools.error(e.getMessage());
 		}
 
-		DecompilerService decompilerService = pickDecompiler(project, arg.decompiler);
+		List<DecompilerService> decompilerServices = pickDecompiler(project, arg.decompiler);
 
-		if (decompilerService == null) {
+		if (decompilerServices.isEmpty()) {
 			return McpTools.error("Cannot find decompiler with name: " + arg.decompiler);
+		} else if (decompilerServices.size() > 1) {
+			return McpTools.error("Multiple decompilers found: " + decompilerServices);
 		}
 
-		classHandleProvider.setDecompilerService(decompilerService);
+		classHandleProvider.setDecompilerService(decompilerServices.get(0));
 
 		ClassHandle handle = classHandleProvider.openClass(cls);
 
@@ -77,28 +80,19 @@ public record DecompileTool(EnigmaProject project, ClassHandleProvider classHand
 		}
 	}
 
-	@Nullable
-	static DecompilerService pickDecompiler(EnigmaProject project, String name) {
-		switch (name) {
-		case "vineflower":
-			return Decompilers.VINEFLOWER;
-		case "cfr":
-			return Decompilers.CFR;
-		case "procyon":
-			return Decompilers.PROCYON;
-		case "bytecode":
-			return Decompilers.BYTECODE;
-		}
-
-		for (DecompilerService service : project.getEnigma().getServices().get(DecompilerService.TYPE)) {
-			String serviceName = service.getClass().getSimpleName().toLowerCase()
-					.replace("decompiler", "");
-			if (serviceName.contains(name)) {
-				return service;
-			}
-		}
-
-		return null;
+	private static List<DecompilerService> pickDecompiler(EnigmaProject project, String name) {
+		return switch (name) {
+		case "vineflower" -> List.of(Decompilers.VINEFLOWER);
+		case "cfr" -> List.of(Decompilers.CFR);
+		case "procyon" -> List.of(Decompilers.PROCYON);
+		case "bytecode" -> List.of(Decompilers.BYTECODE);
+		default -> project.getEnigma()
+				.getServices()
+				.get(DecompilerService.TYPE)
+				.stream()
+				.filter(service -> service.getClass().getName().startsWith(name))
+				.toList();
+		};
 	}
 
 	@JsonClassDescription("Decompile a class to Java source code")
@@ -108,7 +102,7 @@ public record DecompileTool(EnigmaProject project, ClassHandleProvider classHand
 		public String class_name;
 
 		@JsonProperty(defaultValue = "vineflower")
-		@JsonPropertyDescription("Decompiler to use: vineflower, cfr, procyon, bytecode, or other registered decompiler service")
+		@JsonPropertyDescription("Decompiler to use: vineflower, cfr, procyon, bytecode, or full class name prefix of registered decompiler")
 		public String decompiler;
 	}
 }
