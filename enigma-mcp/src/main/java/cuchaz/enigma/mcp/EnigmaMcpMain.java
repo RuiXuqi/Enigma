@@ -10,8 +10,6 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import cuchaz.enigma.translation.mapping.EntryRemapper;
-
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -21,6 +19,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import joptsimple.ValueConverter;
+import joptsimple.util.EnumConverter;
 
 import cuchaz.enigma.Enigma;
 import cuchaz.enigma.EnigmaProfile;
@@ -37,12 +36,12 @@ import cuchaz.enigma.mcp.tool.SearchClassesTool;
 import cuchaz.enigma.mcp.tool.TypedArgTool;
 import cuchaz.enigma.source.Decompilers;
 import cuchaz.enigma.translation.mapping.EntryMapping;
+import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.mapping.serde.MappingFormat;
 import cuchaz.enigma.translation.mapping.serde.MappingParseException;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
 
 public class EnigmaMcpMain {
-
 	public static void main(String[] args) {
 		OptionParser parser = new OptionParser();
 
@@ -53,17 +52,18 @@ public class EnigmaMcpMain {
 		OptionSpec<Path> librariesOpt = parser.accepts("library", "Library file used by the jar")
 				.withRequiredArg()
 				.withValuesConvertedBy(PathConverter.INSTANCE);
-		OptionSpec<Path> mappingsOpt = parser.accepts("mapping", "Mapping file or directory to open at startup")
-				.withRequiredArg()
-				.required()
+		OptionSpec<Path> mappingsOpt = parser.accepts("mapping", "Mapping file or directory to open at startup. Ignoring this and 'mapping-format' allows starting from an empty mapping")
+				.withOptionalArg()
 				.withValuesConvertedBy(PathConverter.INSTANCE);
-		OptionSpec<String> mappingFormatOpt = parser.accepts(
-				"mapping-format", "Mapping format name (case-insensitive): " + Arrays.stream(
-								MappingFormat.values())
+		OptionSpec<MappingFormat> mappingFormatOpt = parser.accepts(
+				"mapping-format", "Mapping format name (case-insensitive): " + Arrays.stream(MappingFormat.values())
 						.map(Enum::name)
 						.map(s -> s.toLowerCase(Locale.ROOT))
 						.collect(Collectors.joining(", "))
-		).withRequiredArg().required();
+		)
+				.withOptionalArg()
+				.withValuesConvertedBy(new EnumConverter<>(MappingFormat.class) {
+				});
 		OptionSpec<Path> profileOpt = parser.accepts("profile", "Profile json to apply at startup")
 				.withRequiredArg()
 				.withValuesConvertedBy(PathConverter.INSTANCE);
@@ -83,13 +83,25 @@ public class EnigmaMcpMain {
 		}
 
 		List<Path> jars = parsedArgs.valuesOf(jarOpt);
-		Path mappingsFile = parsedArgs.valueOf(mappingsOpt);
-		String mappingFormatStr = parsedArgs.valueOf(mappingFormatOpt);
+		Path mappingsFile = parsedArgs.valueOfOptional(mappingsOpt).orElse(null);
+		MappingFormat mappingFormat = parsedArgs.valueOfOptional(mappingFormatOpt).orElse(null);
 		Path profileFile = parsedArgs.valueOf(profileOpt);
 		List<Path> libraries = parsedArgs.valuesOf(librariesOpt);
 
+		if ((mappingsFile == null) != (mappingFormat == null)) {
+			throw new IllegalArgumentException("%s and %s should be used in group");
+		}
+
 		System.err.println("Starting enigma-mcp server");
 
+		runServer(profileFile, jars, libraries, mappingFormat, mappingsFile);
+	}
+
+	private static void runServer(Path profileFile,
+			List<Path> jars,
+			List<Path> libraries,
+			MappingFormat mappingFormat,
+			Path mappingsFile) {
 		try {
 			EnigmaProfile profile = profileFile != null
 					? EnigmaProfile.read(profileFile)
@@ -101,31 +113,30 @@ public class EnigmaMcpMain {
 			System.err.println("Indexing jar...");
 			EnigmaProject project = enigma.openJars(jars, libraries, ProgressListener.none());
 
-			MappingFormat mappingFormat = Arrays.stream(MappingFormat.values())
-					.filter(format -> format.name().equalsIgnoreCase(mappingFormatStr))
-					.findFirst()
-					.orElseThrow(() -> new IllegalArgumentException("Unknown mapping format: " + mappingFormatStr));
-
-			// Validate mapping file path matches the format's expected file type
-			MappingFormat.FileType fileType = mappingFormat.getFileType();
-
-			if (fileType.isDirectory()) {
-				if (!Files.isDirectory(mappingsFile)) {
-					throw new IllegalArgumentException("Format " + mappingFormatStr + " expects a directory, but mapping path looks like a file: " + mappingsFile);
-				}
-			} else {
-				String fileName = mappingsFile.getFileName().toString();
-
-				if (fileType.extensions().stream().noneMatch(fileName::endsWith)) {
-					String expected = String.join(" or ", fileType.extensions());
-					throw new IllegalArgumentException("Format " + mappingFormatStr + " expects " + expected + " file, but mapping path does not match: " + mappingsFile);
-				}
-			}
-
-			if (!Files.exists(mappingsFile)) {
-				System.err.println("Mapping file not found, starting with empty mappings");
+			if (mappingFormat == null) {
+				assert mappingsFile == null;
 				project.setMappings(null);
 			} else {
+				if (!Files.exists(mappingsFile)) {
+					throw new IllegalArgumentException("Mapping file not found");
+				}
+
+				// Validate mapping file path matches the format's expected file type
+				MappingFormat.FileType fileType = mappingFormat.getFileType();
+
+				if (fileType.isDirectory()) {
+					if (!Files.isDirectory(mappingsFile)) {
+						throw new IllegalArgumentException("Format " + mappingFormat + " expects a directory, but got: " + mappingsFile);
+					}
+				} else {
+					String fileName = mappingsFile.getFileName().toString();
+
+					if (fileType.extensions().stream().noneMatch(fileName::endsWith)) {
+						String expected = String.join(" or ", fileType.extensions());
+						throw new IllegalArgumentException("Format " + mappingFormat + " expects " + expected + " file, but mapping path does not match: " + mappingsFile);
+					}
+				}
+
 				System.err.println("Reading mappings...");
 				EntryTree<EntryMapping> mappings = mappingFormat.read(
 						mappingsFile,
