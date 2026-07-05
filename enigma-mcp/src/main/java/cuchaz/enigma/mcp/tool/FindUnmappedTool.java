@@ -1,6 +1,8 @@
 package cuchaz.enigma.mcp.tool;
 
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
@@ -11,6 +13,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 
 import cuchaz.enigma.EnigmaProject;
 import cuchaz.enigma.analysis.index.EntryIndex;
+import cuchaz.enigma.api.view.entry.EntryView;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.representation.entry.Entry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
@@ -62,6 +65,14 @@ public record FindUnmappedTool(EnigmaProject project) implements TypedArgTool<Fi
 
 		if (nameSuffix != null) {
 			stream = stream.filter(e -> e.getName().endsWith(nameSuffix));
+		}
+
+		if (arg.deduplicate_by_name) {
+			// in theory, I can: stream = stream.map(ByNameContainer::new).distinct().map(ByNameContainer::entry);
+			// But current implementation should be better in allocation and speed
+			stream = stream.collect(Collectors.toMap(EntryView::getName, Function.identity(), (a, b) -> a))
+					.values()
+					.stream();
 		}
 
 		List<String> descriptions = stream.filter(e -> McpTools.isUnmapped(remapper, e))
@@ -116,6 +127,10 @@ public record FindUnmappedTool(EnigmaProject project) implements TypedArgTool<Fi
 		@JsonProperty(defaultValue = "50")
 		@JsonPropertyDescription("Maximum results")
 		public Integer limit;
+
+		@JsonProperty(defaultValue = "false")
+		@JsonPropertyDescription("If true, members will be deduplicated by its (obfuscated) name")
+		public boolean deduplicate_by_name;
 	}
 
 	// Keep the existing EntryType enum (moved from FindUnmappedArg)
