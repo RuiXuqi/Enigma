@@ -325,8 +325,7 @@ public class EntryDescription {
 		CLASS(ClassEntry.class),
 		METHOD(MethodEntry.class),
 		FIELD(FieldEntry.class),
-		PARAM(LocalVariableEntry.class),
-		BY_DESCRIPTION(null);
+		PARAM(LocalVariableEntry.class);
 
 		private final Class<? extends Entry<?>> entryType;
 
