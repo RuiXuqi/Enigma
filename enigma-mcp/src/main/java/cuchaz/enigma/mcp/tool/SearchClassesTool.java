@@ -18,7 +18,7 @@ import cuchaz.enigma.translation.representation.entry.ClassEntry;
 public record SearchClassesTool(EnigmaProject project) implements TypedArgTool<SearchClassesTool.ArgObject> {
 	@Override
 	public String name() {
-		return "search_class";
+		return "search_classes";
 	}
 
 	@Override
