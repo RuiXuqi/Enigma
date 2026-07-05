@@ -256,10 +256,12 @@ public class EntryDescription {
 			String methodNameDesc = rest.substring(lastHash + 1);
 			String paramAndClass = rest.substring(0, lastHash);
 
-			int descStart = nonNegative(
-					methodNameDesc.indexOf('('),
-					i -> new IllegalArgumentException("Cannot find starting '(' of method descriptor")
-			);
+			int descStart = methodNameDesc.indexOf('(');
+
+			if (descStart < 0) {
+				// descriptor empty
+				descStart = methodNameDesc.length();
+			}
 
 			int lastAt = nonNegative(paramAndClass.lastIndexOf('@'), i -> new IllegalArgumentException("No '@' found"));
 
