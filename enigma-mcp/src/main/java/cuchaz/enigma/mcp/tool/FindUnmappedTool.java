@@ -113,6 +113,7 @@ public record FindUnmappedTool(EnigmaProject project) implements TypedArgTool<Fi
 		@JsonPropertyDescription("Optional filter: entry name ends with this value")
 		public String name_suffix;
 
+		@JsonProperty(defaultValue = "50")
 		@JsonPropertyDescription("Maximum results")
 		public Integer limit;
 	}
