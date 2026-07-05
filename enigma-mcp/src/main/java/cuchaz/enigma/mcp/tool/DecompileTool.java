@@ -74,7 +74,7 @@ public record DecompileTool(EnigmaProject project, ClassHandleProvider classHand
 				return McpTools.ok(result.unwrap().getIndex().getSource());
 			}
 
-			return McpTools.error(result.unwrapErr().toString());
+			return McpTools.error(result.unwrapErr().cause.toString());
 		} catch (Exception e) {
 			return McpTools.error("Failed to decompile class: " + e);
 		}
