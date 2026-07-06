@@ -61,33 +61,33 @@ public record FindInheritanceTool(EnigmaProject project) implements TypedArgTool
 
 		try {
 			switch (arg.query) {
-			case "parents" -> {
+			case PARENTS -> {
 				sb.append("Parents of ");
 				appendClassHeader(sb, remapper, cls);
 				sb.append(":\n");
 				formatClassList(sb, remapper, inhIndex.getParents(cls));
 			}
-			case "children" -> {
+			case CHILDREN -> {
 				sb.append("Children of ");
 				appendClassHeader(sb, remapper, cls);
 				sb.append(":\n");
 				formatClassList(sb, remapper, inhIndex.getChildren(cls));
 			}
-			case "descendants" -> {
+			case DESCENDENTS -> {
 				sb.append("Descendants of ");
 				appendClassHeader(sb, remapper, cls);
 				sb.append(":\n");
 				Collection<ClassEntry> descendants = inhIndex.getDescendants(cls);
 				formatClassList(sb, remapper, descendants);
 			}
-			case "ancestors" -> {
+			case ANCESTORS -> {
 				sb.append("Ancestors of ");
 				appendClassHeader(sb, remapper, cls);
 				sb.append(":\n");
 				Set<ClassEntry> ancestors = inhIndex.getAncestors(cls);
 				formatClassList(sb, remapper, ancestors);
 			}
-			case "relation" -> {
+			case RELATION -> {
 				if (arg.other_class == null || arg.other_class.isEmpty()) {
 					return McpTools.error("relation query requires 'other_class' to be specified");
 				}
@@ -140,17 +140,25 @@ public record FindInheritanceTool(EnigmaProject project) implements TypedArgTool
 		}
 	}
 
-	@JsonClassDescription("Query class inheritance hierarchy (parents, children, descendants, ancestors, relation)")
+	@JsonClassDescription("Query class inheritance hierarchy")
 	public static class ArgObject {
 		@JsonProperty(required = true)
 		@JsonPropertyDescription("Full obfuscated class internal name, e.g. net/minecraft/world/item/ItemStack")
 		public String class_name;
 
 		@JsonProperty(required = true)
-		@JsonPropertyDescription("Type of inheritance query. One of: parents, children, descendants, ancestors, relation")
-		public String query;
+		@JsonPropertyDescription("Type of inheritance query.")
+		public QueryType query;
 
 		@JsonPropertyDescription("Required only for 'relation' query: the other class to check relation against")
 		public String other_class;
+	}
+
+	enum QueryType {
+		PARENTS,
+		CHILDREN,
+		DESCENDENTS,
+		ANCESTORS,
+		RELATION
 	}
 }

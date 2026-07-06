@@ -63,7 +63,7 @@ public record FindReferenceTool(EnigmaProject project) implements TypedArgTool<F
 
 		try {
 			switch (arg.reference_type) {
-			case "references_by_usage" -> {
+			case REFERENCES_BY_USAGE -> {
 				if (entry instanceof ClassEntry cls) {
 					formatReferences(sb, remapper, refIndex.getReferencesToClass(cls));
 				} else if (entry instanceof MethodEntry method) {
@@ -74,7 +74,7 @@ public record FindReferenceTool(EnigmaProject project) implements TypedArgTool<F
 					return McpTools.error("Unsupported entry type for references_by_usage: " + entry.getClass().getSimpleName());
 				}
 			}
-			case "references_in_declaration" -> {
+			case REFERENCES_IN_DECLARATION -> {
 				if (!(entry instanceof ClassEntry cls)) {
 					return McpTools.error("references_in_declaration requires a class entry");
 				}
@@ -93,7 +93,7 @@ public record FindReferenceTool(EnigmaProject project) implements TypedArgTool<F
 					formatReferences(sb, remapper, refIndex.getMethodTypeReferencesToClass(cls));
 				}
 			}
-			case "methods_referenced_by" -> {
+			case METHODS_REFERENCED_BY -> {
 				if (!(entry instanceof MethodEntry method)) {
 					return McpTools.error("methods_referenced_by requires a method entry");
 				}
@@ -166,11 +166,17 @@ public record FindReferenceTool(EnigmaProject project) implements TypedArgTool<F
 		@JsonPropertyDescription("""
 				Type of reference query:
 				- references_by_usage: usage-level references (class/method/field usage in instructions).
-				- references_in_declaration: type references in field/method declarations. Only class entry description is allowed.
+				- references_in_declaration: type references in field/method declarations. Entry must be a class.
 				- methods_referenced_by: methods called by the given method. Entry must be a method.""")
-		public String reference_type;
+		public QueryType reference_type;
 
 		@JsonPropertyDescription("Optional filter only for references_in_declaration: FIELD (field declarations only), METHOD (method declarations only), or omit for both")
 		public String declaration_type;
+	}
+
+	enum QueryType {
+		REFERENCES_BY_USAGE,
+		REFERENCES_IN_DECLARATION,
+		METHODS_REFERENCED_BY
 	}
 }
