@@ -155,7 +155,7 @@ public class EnigmaMcpMain {
 							new FindReferenceTool(project),
 							new FindInheritanceTool(project),
 							new DecompileTool(project, new ClassHandleProvider(project, Decompilers.VINEFLOWER)),
-							new SaveTool(project, profile.getMappingSaveParameters())
+							new SaveTool(project, mappingsFile, mappingFormat, profile.getMappingSaveParameters())
 					)
 					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec))
 					.toList();

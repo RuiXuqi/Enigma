@@ -2,9 +2,9 @@ package cuchaz.enigma.mcp.tool;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -18,7 +18,7 @@ import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 /**
  * @author ZZZank
  */
-public record SaveTool(EnigmaProject project, MappingSaveParameters saveParameters) implements TypedArgTool<SaveTool.ArgObject> {
+public record SaveTool(EnigmaProject project, Path mappingsFile, MappingFormat mappingFormat, MappingSaveParameters saveParameters) implements TypedArgTool<SaveTool.ArgObject> {
 	@Override
 	public String name() {
 		return "save";
@@ -37,11 +37,21 @@ public record SaveTool(EnigmaProject project, MappingSaveParameters saveParamete
 	) {
 		EntryRemapper remapper = project.getMapper();
 
+		if (arg.format == null) {
+			arg.format = Objects.requireNonNull(mappingFormat, "No mapping file to start with, so 'format' and 'path' is required.");
+		}
+
 		if (!arg.format.isWritable()) {
 			return McpTools.error("Mapping format " + arg.format + " does not support writing. Writable formats: " + MappingFormat.getWritableFormats());
 		}
 
-		Path targetPath = Path.of(arg.path);
+		Path targetPath;
+
+		if (arg.path == null) {
+			targetPath = mappingsFile;
+		} else {
+			targetPath = Path.of(arg.path);
+		}
 
 		// Validate path matches the format's expected file type
 		MappingFormat.FileType fileType = arg.format.getFileType();
@@ -75,11 +85,10 @@ public record SaveTool(EnigmaProject project, MappingSaveParameters saveParamete
 
 	@JsonClassDescription("Save current mappings to disk in the specified format at the specified path")
 	public static class ArgObject {
-		@JsonProperty(required = true)
+		@JsonPropertyDescription("Format of saved mappings. When omitted, the format of original mapping file will be used.")
 		public MappingFormat format;
 
-		@JsonProperty(required = true)
-		@JsonPropertyDescription("File path to save mappings to")
+		@JsonPropertyDescription("File path to save mappings to. When omitted, mappings will be saved to the path of original mapping file so that original mapping file will be overwritten.")
 		public String path;
 	}
 }
