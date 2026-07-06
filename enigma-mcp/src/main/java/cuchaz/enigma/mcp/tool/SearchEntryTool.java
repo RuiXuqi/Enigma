@@ -126,6 +126,10 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 			stream = stream.filter(e -> ((LocalVariableEntry) e).getIndex() == localIndex);
 		}
 
+		if (arg.limit >= 0) {
+			stream = stream.limit(arg.limit);
+		}
+
 		List<? extends Entry<?>> matches = stream.toList();
 
 		if (matches.isEmpty()) {
@@ -156,5 +160,8 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		@JsonProperty(defaultValue = "false")
 		@JsonPropertyDescription("If true, name matching will be performed on deobfuscated name instead of obfuscated name.")
 		public boolean search_by_deobf;
+		@JsonProperty(defaultValue = "50")
+		@JsonPropertyDescription("The upper limit of the amount of entries. Negative number = no limit.")
+		public int limit;
 	}
 }
