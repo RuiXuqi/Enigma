@@ -6,6 +6,7 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jetbrains.annotations.Nullable;
 
 import cuchaz.enigma.analysis.index.JarIndex;
@@ -28,6 +29,7 @@ import cuchaz.enigma.translation.representation.entry.MethodEntry;
 /// When paired with [#makeOrFindEntry(JarIndex)], it can be omitted and the method searches the jar
 /// index instead.
 public class EntryDescription {
+	@JsonProperty(required = true)
 	public EntryType type;
 	public String name;
 	public String class_name;
