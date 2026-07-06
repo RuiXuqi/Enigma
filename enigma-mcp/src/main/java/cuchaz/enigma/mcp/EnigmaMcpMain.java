@@ -31,7 +31,7 @@ import cuchaz.enigma.mcp.tool.FindUnmappedTool;
 import cuchaz.enigma.mcp.tool.GetEntryTool;
 import cuchaz.enigma.mcp.tool.ListMembersTool;
 import cuchaz.enigma.mcp.tool.SaveTool;
-import cuchaz.enigma.mcp.tool.SearchClassesTool;
+import cuchaz.enigma.mcp.tool.SearchEntryTool;
 import cuchaz.enigma.mcp.tool.TypedArgTool;
 import cuchaz.enigma.source.Decompilers;
 import cuchaz.enigma.translation.mapping.EntryMapping;
@@ -145,7 +145,7 @@ public class EnigmaMcpMain {
 			StdioServerTransportProvider transport = new StdioServerTransportProvider(McpJsonDefaults.getMapper());
 
 			List<McpServerFeatures.SyncToolSpecification> tools = Stream.of(
-							new SearchClassesTool(project),
+							new SearchEntryTool(project),
 							new GetEntryTool(project),
 							new EditMappingTool(project),
 							new ListMembersTool(project),
