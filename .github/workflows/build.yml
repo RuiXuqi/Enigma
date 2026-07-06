@@ -1,19 +1,35 @@
-name: Build
-on: [ push, pull_request ]
+name: Build and Upload
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 */30 * *'
+  workflow_dispatch:
+
 jobs:
   build:
-    strategy:
-      matrix:
-        java: [ 17-ubuntu, 21-ubuntu ]
-    runs-on: ubuntu-22.04
-    container:
-      image: mcr.microsoft.com/openjdk/jdk:${{ matrix.java }}
-      options: --user root
+    runs-on: ubuntu-latest
+
     steps:
+      - uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
       - uses: actions/checkout@v4
-      - run: ./gradlew build --stacktrace --warning-mode fail
+
+      - run: chmod +x gradlew
+
+      - run: ./gradlew build --stacktrace
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: |
+            enigma*/build/libs/*.jar
+
       - uses: Juuxel/publish-checkstyle-report@v1
         if: ${{ failure() }}
         with:
           reports: |
-            **/build/reports/checkstyle/*.xml
+            enigma*/build/reports/checkstyle/*.xml
