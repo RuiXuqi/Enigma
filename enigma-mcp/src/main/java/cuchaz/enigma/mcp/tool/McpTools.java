@@ -89,6 +89,6 @@ class McpTools {
 	}
 
 	static boolean notBlank(@Nullable String str) {
-		return str == null || str.isBlank();
+		return str != null && !str.isBlank();
 	}
 }
