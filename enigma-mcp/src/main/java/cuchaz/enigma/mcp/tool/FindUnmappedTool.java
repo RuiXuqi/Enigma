@@ -49,11 +49,12 @@ public record FindUnmappedTool(EnigmaProject project) implements TypedArgTool<Fi
 		String classFilter = arg.class_filter;
 		String namePrefix = arg.name_prefix;
 		String nameSuffix = arg.name_suffix;
-		int limit = arg.limit != null ? arg.limit : 50;
 
 		StringBuilder sb = new StringBuilder();
 
-		Stream<? extends Entry<?>> stream = arg.entry_type.extractEntries(entryIndex);
+		Stream<? extends Entry<?>> stream = arg.entry_type
+				.extractEntries(entryIndex)
+				.filter(e -> McpTools.isUnmapped(remapper, e));
 
 		if (classFilter != null) {
 			stream = stream.filter(e -> e.getContainingClass().getFullName().startsWith(classFilter));
@@ -75,9 +76,11 @@ public record FindUnmappedTool(EnigmaProject project) implements TypedArgTool<Fi
 					.stream();
 		}
 
-		List<String> descriptions = stream.filter(e -> McpTools.isUnmapped(remapper, e))
-				.limit(limit)
-				.map(e -> McpTools.entryDescription(remapper, e))
+		if (arg.limit >= 0) {
+			stream = stream.limit(arg.limit);
+		}
+
+		List<String> descriptions = stream.map(e -> McpTools.entryDescription(remapper, e))
 				.sorted()
 				.toList();
 
@@ -125,8 +128,8 @@ public record FindUnmappedTool(EnigmaProject project) implements TypedArgTool<Fi
 		public String name_suffix;
 
 		@JsonProperty(defaultValue = "50")
-		@JsonPropertyDescription("Maximum results")
-		public Integer limit;
+		@JsonPropertyDescription("Maximum results. Negative number = no limit")
+		public int limit;
 
 		@JsonProperty(defaultValue = "false")
 		@JsonPropertyDescription("If true, members will be deduplicated by its (obfuscated) name")
