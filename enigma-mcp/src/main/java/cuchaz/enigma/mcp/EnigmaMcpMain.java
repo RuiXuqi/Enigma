@@ -27,6 +27,8 @@ import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.classhandle.ClassHandleProvider;
 import cuchaz.enigma.mcp.tool.DecompileTool;
 import cuchaz.enigma.mcp.tool.EditMappingTool;
+import cuchaz.enigma.mcp.tool.FindInheritanceTool;
+import cuchaz.enigma.mcp.tool.FindReferenceTool;
 import cuchaz.enigma.mcp.tool.FindUnmappedTool;
 import cuchaz.enigma.mcp.tool.GetEntryTool;
 import cuchaz.enigma.mcp.tool.ListMembersTool;
@@ -150,6 +152,8 @@ public class EnigmaMcpMain {
 							new EditMappingTool(project),
 							new ListMembersTool(project),
 							new FindUnmappedTool(project),
+							new FindReferenceTool(project),
+							new FindInheritanceTool(project),
 							new DecompileTool(project, new ClassHandleProvider(project, Decompilers.VINEFLOWER)),
 							new SaveTool(project, profile.getMappingSaveParameters())
 					)
