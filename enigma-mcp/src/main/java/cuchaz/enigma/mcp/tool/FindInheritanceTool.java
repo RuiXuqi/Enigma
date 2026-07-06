@@ -50,7 +50,7 @@ public record FindInheritanceTool(EnigmaProject project) implements TypedArgTool
 		try {
 			cls = ClassEntry.parse(arg.class_name);
 		} catch (Exception e) {
-			return McpTools.error("Invalid class name: " + e.getMessage());
+			return McpTools.error(String.format("Class name '%s' is invalid: %s", arg.class_name, e));
 		}
 
 		if (!jarIndex.getEntryIndex().hasClass(cls)) {
