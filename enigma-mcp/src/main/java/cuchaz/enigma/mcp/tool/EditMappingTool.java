@@ -42,22 +42,24 @@ public record EditMappingTool(EnigmaProject project) implements TypedArgTool<Edi
 			return McpTools.error(errorOut.toString());
 		}
 
-		EntryMapping mapping = remapper.getDeobfMapping(entry);
+		EntryMapping mapping;
 
 		if (arg.new_name == null && arg.javadoc == null && arg.access == null) {
 			mapping = EntryMapping.DEFAULT;
-		}
+		} else {
+			mapping = remapper.getDeobfMapping(entry);
 
-		if (arg.new_name != null) {
-			mapping = mapping.withName(arg.new_name);
-		}
+			if (arg.new_name != null) {
+				mapping = mapping.withName(arg.new_name);
+			}
 
-		if (arg.javadoc != null) {
-			mapping = mapping.withDocs(arg.javadoc);
-		}
+			if (arg.javadoc != null) {
+				mapping = mapping.withDocs(arg.javadoc);
+			}
 
-		if (arg.access != null) {
-			mapping = mapping.withModifier(arg.access);
+			if (arg.access != null) {
+				mapping = mapping.withModifier(arg.access);
+			}
 		}
 
 		ValidationContext vc = new ValidationContext();

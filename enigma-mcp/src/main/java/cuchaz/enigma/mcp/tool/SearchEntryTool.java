@@ -61,7 +61,7 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		Stream<? extends Entry<?>> stream = candidates.stream();
 
 		// Filter by entry name prefix
-		if (arg.name != null && !arg.name.isEmpty()) {
+		if (McpTools.notBlank(arg.name)) {
 			String name = arg.name;
 
 			Predicate<Entry<?>> filter;
@@ -82,7 +82,7 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		}
 
 		// Filter by containing class (prefix) for members
-		if (arg.type != EntryType.CLASS && arg.class_name != null && !arg.class_name.isEmpty()) {
+		if (arg.type != EntryType.CLASS && McpTools.notBlank(arg.class_name)) {
 			String className = arg.class_name;
 			stream = stream.filter(e -> {
 				ClassEntry containing = e.getContainingClass();
@@ -91,9 +91,7 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		}
 
 		// Filter by descriptor for methods/fields
-		if ((arg.type == EntryType.METHOD || arg.type == EntryType.FIELD)
-				&& arg.descriptor != null
-				&& !arg.descriptor.isEmpty()) {
+		if ((arg.type == EntryType.METHOD || arg.type == EntryType.FIELD) && McpTools.notBlank(arg.descriptor)) {
 			String descriptor = arg.descriptor;
 			stream = stream.filter(e -> {
 				if (e instanceof MethodEntry m) {
@@ -109,15 +107,13 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		}
 
 		// Filter by parent method for params
-		if (arg.type == EntryType.PARAM
-				&& arg.method_name != null
-				&& !arg.method_name.isEmpty()) {
+		if (arg.type == EntryType.PARAM && McpTools.notBlank(arg.method_name)) {
 			String methodName = arg.method_name;
 			String descriptor = arg.method_descriptor;
 			stream = stream.filter(e -> {
 				MethodEntry parent = ((LocalVariableEntry) e).getParent();
 				return parent.getName().startsWith(methodName)
-						&& (descriptor == null || descriptor.equals(parent.getDescriptor()));
+						&& (descriptor == null || descriptor.isEmpty() || descriptor.equals(parent.getDescriptor()));
 			});
 		}
 

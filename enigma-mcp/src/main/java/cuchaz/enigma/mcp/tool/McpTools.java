@@ -11,7 +11,7 @@ import cuchaz.enigma.translation.mapping.EntryMapping;
 import cuchaz.enigma.translation.mapping.EntryRemapper;
 import cuchaz.enigma.translation.representation.entry.Entry;
 
-public class McpTools {
+class McpTools {
 	static McpSchema.CallToolResult ok(String text) {
 		return McpSchema.CallToolResult.builder()
 				.addTextContent(text)
@@ -86,5 +86,9 @@ public class McpTools {
 
 	static McpSchema.ToolAnnotations annotateReadOnly() {
 		return McpSchema.ToolAnnotations.builder().readOnlyHint(true).build();
+	}
+
+	static boolean notBlank(@Nullable String str) {
+		return str == null || str.isBlank();
 	}
 }

@@ -46,8 +46,6 @@ public record ListMembersTool(EnigmaProject project) implements TypedArgTool<Lis
 		EntryRemapper remapper = project.getMapper();
 		JarIndex jarIndex = project.getJarIndex();
 
-		String memberType = arg.member_type != null ? arg.member_type : "all";
-
 		ClassEntry cls;
 
 		try {
@@ -74,8 +72,8 @@ public record ListMembersTool(EnigmaProject project) implements TypedArgTool<Lis
 		Map<ClassEntry, List<ParentedEntry<?>>> childrenByClass = jarIndex.getChildrenByClass();
 		List<ParentedEntry<?>> children = childrenByClass.getOrDefault(cls, List.of());
 
-		boolean showMethod = memberType.equals("method") || memberType.equals("all");
-		boolean showField = memberType.equals("field") || memberType.equals("all");
+		boolean showMethod = arg.member_type.equals("method") || arg.member_type.equals("all");
+		boolean showField = arg.member_type.equals("field") || arg.member_type.equals("all");
 
 		if (showField) {
 			for (ParentedEntry<?> child : children) {
@@ -115,6 +113,7 @@ public record ListMembersTool(EnigmaProject project) implements TypedArgTool<Lis
 		@JsonPropertyDescription("Obfuscated class internal name")
 		public String class_name;
 
+		@JsonProperty(defaultValue = "all")
 		@JsonPropertyDescription("Type of members: method, field, or all")
 		public String member_type;
 	}

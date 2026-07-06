@@ -49,7 +49,6 @@ public class EntryDescription {
 		case PARAM -> local_index == null
 				? "param " + name + '@' + class_name + '#' + method_name + method_descriptor
 				: "param " + name + '@' + class_name + '#' + method_name + method_descriptor + ' ' + local_index;
-		default -> throw new IllegalStateException("Not supported entry type: " + type);
 		};
 	}
 
@@ -75,7 +74,6 @@ public class EntryDescription {
 		case PARAM -> new LocalVariableEntry(
 				MethodEntry.parse(class_name, method_name, method_descriptor),
 				local_index, name, true, null);
-		default -> throw new IllegalStateException("Not supported entry type: " + type);
 		};
 	}
 
