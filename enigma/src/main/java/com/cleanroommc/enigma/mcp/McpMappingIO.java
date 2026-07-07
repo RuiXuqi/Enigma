@@ -22,7 +22,9 @@ import cuchaz.enigma.translation.mapping.MappingDelta;
 import cuchaz.enigma.translation.mapping.serde.MappingParseException;
 import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
+import cuchaz.enigma.translation.mapping.tree.EntryTreeNode;
 import cuchaz.enigma.translation.mapping.tree.HashEntryTree;
+import cuchaz.enigma.translation.representation.entry.Entry;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
 import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
@@ -167,8 +169,9 @@ public class McpMappingIO {
 			var methods = new TreeMap<String, McpMapping.MethodMappingEntry>();
 			var params = new TreeMap<ParamKey, McpMapping.ParamMappingEntry>();
 
-			mappings.getAllEntries().forEach(entry -> {
-				EntryMapping mapping = mappings.get(entry);
+			for (EntryTreeNode<EntryMapping> node: mappings) {
+				Entry<?> entry = node.getEntry();
+				EntryMapping mapping = node.getValue();
 
 				if (mapping == null || mapping.targetName() == null) {
 					return;
@@ -200,19 +203,18 @@ public class McpMappingIO {
 									mapping.javadoc()
 							)
 					);
-				} else if (entry instanceof LocalVariableEntry localEntry && localEntry.isArgument()) {
-					String srgParamName = localEntry.getName();
-					String[] split = srgParamName.substring("p_".length()).split("_");
+				} else if (entry instanceof LocalVariableEntry local && local.isArgument()) {
+					String[] split = local.getName().substring("p_".length()).split("_");
 
-					McpMapping.ParamMappingEntry paramMappingEntry = mcpMapping.params().get(srgParamName);
+					McpMapping.ParamMappingEntry paramMappingEntry = mcpMapping.params().get(local.getName());
 					int side = paramMappingEntry == null ? 0 : paramMappingEntry.side();
 
 					params.put(
 							new ParamKey(split[0], split[1]),
-							new McpMapping.ParamMappingEntry(srgParamName, mapping.targetName(), side)
+							new McpMapping.ParamMappingEntry(local.getName(), mapping.targetName(), side)
 					);
 				}
-			});
+			}
 
 			if (mcpMapping != null) {
 				mcpMapping.fields().forEach(fields::putIfAbsent);
