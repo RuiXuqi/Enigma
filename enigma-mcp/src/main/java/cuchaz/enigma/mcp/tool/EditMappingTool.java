@@ -33,6 +33,10 @@ public record EditMappingTool(EnigmaProject project) implements TypedArgTool<Edi
 			McpSchema.CallToolRequest request,
 			ArgObject arg
 	) {
+		return applyMappingEdit(project, arg);
+	}
+
+	public static McpSchema.CallToolResult applyMappingEdit(EnigmaProject project, ArgObject arg) {
 		EntryRemapper remapper = project.getMapper();
 
 		StringBuilder errorOut = new StringBuilder();

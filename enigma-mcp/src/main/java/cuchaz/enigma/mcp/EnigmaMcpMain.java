@@ -32,6 +32,7 @@ import cuchaz.enigma.mcp.tool.FindReferenceTool;
 import cuchaz.enigma.mcp.tool.FindUnmappedTool;
 import cuchaz.enigma.mcp.tool.GetEntryTool;
 import cuchaz.enigma.mcp.tool.ListMembersTool;
+import cuchaz.enigma.mcp.tool.MultiEditMappingTool;
 import cuchaz.enigma.mcp.tool.SaveTool;
 import cuchaz.enigma.mcp.tool.SearchEntryTool;
 import cuchaz.enigma.mcp.tool.TypedArgTool;
@@ -150,6 +151,7 @@ public class EnigmaMcpMain {
 							new SearchEntryTool(project),
 							new GetEntryTool(project),
 							new EditMappingTool(project),
+							new MultiEditMappingTool(project),
 							new ListMembersTool(project),
 							new FindUnmappedTool(project),
 							new FindReferenceTool(project),
