@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
@@ -51,7 +50,15 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		EntryIndex entryIndex = project.getJarIndex().getEntryIndex();
 		EntryRemapper remapper = project.getMapper();
 
-		Collection<? extends Entry<?>> candidates = switch (arg.type) {
+		EntryDescription desc;
+
+		try {
+			desc = EntryDescription.parse(arg.entry_description);
+		} catch (RuntimeException e) {
+			return McpTools.error("Unable to parse entry description: " + e);
+		}
+
+		Collection<? extends Entry<?>> candidates = switch (desc.type) {
 		case CLASS -> entryIndex.getClasses();
 		case METHOD -> entryIndex.getMethods();
 		case FIELD -> entryIndex.getFields();
@@ -61,8 +68,8 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		Stream<? extends Entry<?>> stream = candidates.stream();
 
 		// Filter by entry name prefix
-		if (McpTools.notBlank(arg.name)) {
-			String name = arg.name;
+		if (McpTools.notBlank(desc.name)) {
+			String name = desc.name;
 
 			Predicate<Entry<?>> filter;
 
@@ -71,7 +78,7 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 					EntryMapping mapping = remapper.getDeobfMapping(e);
 					return mapping.targetName() != null && mapping.targetName().startsWith(name);
 				};
-			} else if (arg.type == EntryType.CLASS) {
+			} else if (desc.type == EntryType.CLASS) {
 				// name of inner class equals to `clas.getSimpleName()` instead of `clas.getName()`
 				filter = e -> e.getFullName().startsWith(name);
 			} else {
@@ -82,8 +89,8 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		}
 
 		// Filter by containing class (prefix) for members
-		if (arg.type != EntryType.CLASS && McpTools.notBlank(arg.class_name)) {
-			String className = arg.class_name;
+		if (desc.type != EntryType.CLASS && McpTools.notBlank(desc.class_name)) {
+			String className = desc.class_name;
 			stream = stream.filter(e -> {
 				ClassEntry containing = e.getContainingClass();
 				return containing != null && containing.getFullName().startsWith(className);
@@ -91,8 +98,8 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		}
 
 		// Filter by descriptor for methods/fields
-		if ((arg.type == EntryType.METHOD || arg.type == EntryType.FIELD) && McpTools.notBlank(arg.descriptor)) {
-			String descriptor = arg.descriptor;
+		if ((desc.type == EntryType.METHOD || desc.type == EntryType.FIELD) && McpTools.notBlank(desc.descriptor)) {
+			String descriptor = desc.descriptor;
 			stream = stream.filter(e -> {
 				if (e instanceof MethodEntry m) {
 					return descriptor.equals(m.getDescriptor());
@@ -107,9 +114,9 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		}
 
 		// Filter by parent method for params
-		if (arg.type == EntryType.PARAM && McpTools.notBlank(arg.method_name)) {
-			String methodName = arg.method_name;
-			String descriptor = arg.method_descriptor;
+		if (desc.type == EntryType.PARAM && McpTools.notBlank(desc.method_name)) {
+			String methodName = desc.method_name;
+			String descriptor = desc.method_descriptor;
 			stream = stream.filter(e -> {
 				MethodEntry parent = ((LocalVariableEntry) e).getParent();
 				return parent.getName().startsWith(methodName)
@@ -117,8 +124,8 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 			});
 		}
 
-		if (arg.type == EntryType.PARAM && arg.local_index != null) {
-			int localIndex = arg.local_index;
+		if (desc.type == EntryType.PARAM && desc.local_index != null) {
+			int localIndex = desc.local_index;
 			stream = stream.filter(e -> ((LocalVariableEntry) e).getIndex() == localIndex);
 		}
 
@@ -129,14 +136,14 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		List<? extends Entry<?>> matches = stream.toList();
 
 		if (matches.isEmpty()) {
-			return McpTools.ok("No " + arg.type + " entries found matching the criteria");
+			return McpTools.ok("No " + desc.type + " entries found matching the criteria");
 		}
 
 		StringBuilder sb = new StringBuilder();
 		sb.append("Found ")
 				.append(matches.size())
 				.append(" matching ")
-				.append(arg.type)
+				.append(desc.type)
 				.append(" entr")
 				.append(matches.size() == 1 ? "y" : "ies")
 				.append(":\n\n");
@@ -149,10 +156,17 @@ public record SearchEntryTool(EnigmaProject project) implements TypedArgTool<Sea
 		return McpTools.ok(sb.toString());
 	}
 
-	@JsonClassDescription("""
-			Search criteria. All fields are optional except type.
-			All name fields are matched by prefix. Other fields are matched by equality""")
-	public static class ArgObject extends EntryDescription {
+	public static class ArgObject {
+		@JsonProperty(required = true)
+		@JsonPropertyDescription("""
+				```
+				class [name_prefix]
+				method [name_prefix]@[class_name_prefix] [descriptor]
+				field [name_prefix]@[class_name_prefix] [descriptor]
+				param [name_prefix]@[class_name_prefix]#[method_name_prefix][method_descriptor] [local_index]
+				```
+				Non-prefix fields use exact match""")
+		public String entry_description;
 		@JsonProperty(defaultValue = "false")
 		@JsonPropertyDescription("If true, name matching will be performed on deobfuscated name instead of obfuscated name.")
 		public boolean search_by_deobf;
