@@ -1,6 +1,8 @@
 {
 	"language": "English",
 
+	"mapping_format.mcp_file": "MCP File",
+	"mapping_format.mcp_folder": "MCP Directory",
 	"mapping_format.enigma_file": "Enigma File",
 	"mapping_format.enigma_directory": "Enigma Directory",
 	"mapping_format.enigma_zip": "Enigma ZIP",
@@ -62,6 +64,7 @@
 	"menu.search.class": "Search Classes",
 	"menu.search.method": "Search Methods",
 	"menu.search.field": "Search Fields",
+	"menu.search.param": "Search Parameters",
 	"menu.search.only_exact_matches": "Only show exact matches",
 	"menu.collab": "Collab",
 	"menu.collab.connect": "Connect to Server",
