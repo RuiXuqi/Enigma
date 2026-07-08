@@ -13,7 +13,6 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.jetbrains.annotations.NotNull;
 
 import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.analysis.index.JarIndex;
@@ -157,17 +156,9 @@ public class McpMappingIO {
 		try (var fieldPrinter = new CSVPrinter(fieldsWriter, fieldMethodFormat);
 				var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
 				var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
-			record ParamKey(String methodIndex, String localIndex) implements Comparable<ParamKey> {
-				@Override
-				public int compareTo(@NotNull ParamKey o) {
-					int compared = ParamKey.this.methodIndex.compareTo(o.methodIndex);
-					return compared == 0 ? ParamKey.this.localIndex.compareTo(o.localIndex) : compared;
-				}
-			}
-
 			var fields = new TreeMap<String, McpMapping.FieldMappingEntry>();
 			var methods = new TreeMap<String, McpMapping.MethodMappingEntry>();
-			var params = new TreeMap<ParamKey, McpMapping.ParamMappingEntry>();
+			var params = new TreeMap<String, McpMapping.ParamMappingEntry>();
 
 			for (EntryTreeNode<EntryMapping> node: mappings) {
 				Entry<?> entry = node.getEntry();
@@ -204,13 +195,11 @@ public class McpMappingIO {
 							)
 					);
 				} else if (entry instanceof LocalVariableEntry local && local.isArgument()) {
-					String[] split = local.getName().substring("p_".length()).split("_");
-
 					McpMapping.ParamMappingEntry paramMappingEntry = mcpMapping.params().get(local.getName());
 					int side = paramMappingEntry == null ? 0 : paramMappingEntry.side();
 
 					params.put(
-							new ParamKey(split[0], split[1]),
+							local.getName(),
 							new McpMapping.ParamMappingEntry(local.getName(), mapping.targetName(), side)
 					);
 				}
@@ -219,11 +208,7 @@ public class McpMappingIO {
 			if (mcpMapping != null) {
 				mcpMapping.fields().forEach(fields::putIfAbsent);
 				mcpMapping.methods().forEach(methods::putIfAbsent);
-				mcpMapping.params().forEach((k, v) -> {
-					// p_<methodIndex>_<localIndex>_
-					String[] parts = k.split("_");
-					params.putIfAbsent(new ParamKey(parts[1], parts[2]), v);
-				});
+				mcpMapping.params().forEach(params::putIfAbsent);
 			}
 
 			for (McpMapping.FieldMappingEntry entry : fields.values()) {
