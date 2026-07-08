@@ -159,7 +159,7 @@ public class McpMappingIO {
 				EntryMapping mapping = node.getValue();
 
 				if (mapping == null || mapping.targetName() == null) {
-					return;
+					continue;
 				}
 
 				if (entry instanceof FieldEntry) {
