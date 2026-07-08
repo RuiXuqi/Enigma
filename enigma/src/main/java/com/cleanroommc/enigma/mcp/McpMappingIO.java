@@ -105,32 +105,26 @@ public class McpMappingIO {
 		progressListener.step(3, "Param reading done");
 
 		for (FieldEntry field : index.getEntryIndex().getFields()) {
-			if (field.getName().startsWith("field_")) {
-				McpMapping.FieldMappingEntry fieldMappingEntry = mcpMapping.fields().get(field.getName());
+			McpMapping.FieldMappingEntry mappingEntry = mcpMapping.fields().get(field.getName());
 
-				if (fieldMappingEntry != null) {
-					tree.insert(field, new EntryMapping(fieldMappingEntry.name(), fieldMappingEntry.desc()));
-				}
+			if (mappingEntry != null) {
+				tree.insert(field, new EntryMapping(mappingEntry.name(), mappingEntry.desc()));
 			}
 		}
 
 		for (MethodEntry method : index.getEntryIndex().getMethods()) {
-			if (method.getName().startsWith("func_")) {
-				McpMapping.MethodMappingEntry methodMappingEntry = mcpMapping.methods().get(method.getName());
+			McpMapping.MethodMappingEntry mappingEntry = mcpMapping.methods().get(method.getName());
 
-				if (methodMappingEntry != null) {
-					tree.insert(method, new EntryMapping(methodMappingEntry.name(), methodMappingEntry.desc()));
-				}
+			if (mappingEntry != null) {
+				tree.insert(method, new EntryMapping(mappingEntry.name(), mappingEntry.desc()));
 			}
 		}
 
 		for (LocalVariableEntry param : index.getEntryIndex().getParameters()) {
-			if (param.getName().startsWith("p_")) {
-				McpMapping.ParamMappingEntry methodMappingEntry = mcpMapping.params().get(param.getName());
+			McpMapping.ParamMappingEntry mappingEntry = mcpMapping.params().get(param.getName());
 
-				if (methodMappingEntry != null) {
-					tree.insert(param, new EntryMapping(methodMappingEntry.name()));
-				}
+			if (mappingEntry != null) {
+				tree.insert(param, new EntryMapping(mappingEntry.name()));
 			}
 		}
 
