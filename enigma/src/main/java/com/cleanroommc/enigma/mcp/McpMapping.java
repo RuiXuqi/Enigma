@@ -22,12 +22,16 @@ public record McpMapping(
 		return params.put(param, new ParamMappingEntry(param, name, side));
 	}
 
-	public record FieldMappingEntry(String searge, String name, int side, String desc) {
+	public interface SideMarked {
+		int side();
 	}
 
-	public record MethodMappingEntry(String searge, String name, int side, String desc) {
+	public record FieldMappingEntry(String searge, String name, int side, String desc) implements SideMarked {
 	}
 
-	public record ParamMappingEntry(String param, String name, int side) {
+	public record MethodMappingEntry(String searge, String name, int side, String desc) implements SideMarked {
+	}
+
+	public record ParamMappingEntry(String param, String name, int side) implements SideMarked {
 	}
 }

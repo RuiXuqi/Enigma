@@ -7,12 +7,14 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jetbrains.annotations.NotNull;
 
 import cuchaz.enigma.ProgressListener;
 import cuchaz.enigma.analysis.index.JarIndex;
@@ -150,70 +152,57 @@ public class McpMappingIO {
 		try (var fieldPrinter = new CSVPrinter(fieldsWriter, fieldMethodFormat);
 				var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
 				var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
-			var fields = new TreeMap<String, McpMapping.FieldMappingEntry>();
-			var methods = new TreeMap<String, McpMapping.MethodMappingEntry>();
-			var params = new TreeMap<String, McpMapping.ParamMappingEntry>();
-
-			for (EntryTreeNode<EntryMapping> node: mappings) {
+			for (EntryTreeNode<?> node : delta.getChanges()) {
 				Entry<?> entry = node.getEntry();
-				EntryMapping mapping = node.getValue();
+				EntryMapping mapping = mappings.get(entry);
 
-				if (mapping == null || mapping.targetName() == null) {
-					continue;
-				}
-
-				if (entry instanceof FieldEntry) {
-					McpMapping.FieldMappingEntry fieldEntry = mcpMapping.fields().get(entry.getName());
-					int side = fieldEntry != null ? fieldEntry.side() : 0;
-
-					fields.put(
-							entry.getName(),
-							new McpMapping.FieldMappingEntry(
-									entry.getName(),
-									mapping.targetName(),
+				if (entry instanceof FieldEntry field) {
+					applyMappingChange(
+							field,
+							mapping,
+							mcpMapping.fields(),
+							(e, m, side) -> new McpMapping.FieldMappingEntry(
+									e.getName(),
+									m.targetName(),
 									side,
-									mapping.javadoc()
+									e.getJavadocs()
 							)
 					);
-				} else if (entry instanceof MethodEntry) {
-					McpMapping.MethodMappingEntry methodEntry = mcpMapping.methods().get(entry.getName());
-					int side = methodEntry != null ? methodEntry.side() : 0;
-
-					methods.put(
-							entry.getName(),
-							new McpMapping.MethodMappingEntry(
-									entry.getName(),
-									mapping.targetName(),
+				} else if (entry instanceof MethodEntry method) {
+					applyMappingChange(
+							method,
+							mapping,
+							mcpMapping.methods(),
+							(e, m, side) -> new McpMapping.MethodMappingEntry(
+									e.getName(),
+									m.targetName(),
 									side,
-									mapping.javadoc()
+									e.getJavadocs()
 							)
 					);
 				} else if (entry instanceof LocalVariableEntry local && local.isArgument()) {
-					McpMapping.ParamMappingEntry paramMappingEntry = mcpMapping.params().get(local.getName());
-					int side = paramMappingEntry == null ? 0 : paramMappingEntry.side();
-
-					params.put(
-							local.getName(),
-							new McpMapping.ParamMappingEntry(local.getName(), mapping.targetName(), side)
+					applyMappingChange(
+							local,
+							mapping,
+							mcpMapping.params(),
+							(e, m, side) -> new McpMapping.ParamMappingEntry(
+									e.getName(),
+									m.targetName(),
+									side
+							)
 					);
 				}
 			}
 
-			if (mcpMapping != null) {
-				mcpMapping.fields().forEach(fields::putIfAbsent);
-				mcpMapping.methods().forEach(methods::putIfAbsent);
-				mcpMapping.params().forEach(params::putIfAbsent);
-			}
-
-			for (McpMapping.FieldMappingEntry entry : fields.values()) {
+			for (McpMapping.FieldMappingEntry entry : new TreeMap<>(mcpMapping.fields()).values()) {
 				fieldPrinter.printRecord(entry.searge(), entry.name(), entry.side(), javadoc2Desc(entry.desc()));
 			}
 
-			for (McpMapping.MethodMappingEntry entry : methods.values()) {
+			for (McpMapping.MethodMappingEntry entry : new TreeMap<>(mcpMapping.methods()).values()) {
 				methodPrinter.printRecord(entry.searge(), entry.name(), entry.side(), javadoc2Desc(entry.desc()));
 			}
 
-			for (McpMapping.ParamMappingEntry entry : params.values()) {
+			for (McpMapping.ParamMappingEntry entry : new TreeMap<>(mcpMapping.params()).values()) {
 				paramPrinter.printRecord(entry.param(), entry.name(), entry.side());
 			}
 		} catch (IOException e) {
@@ -232,6 +221,21 @@ public class McpMappingIO {
 		}
 
 		progressListener.step(2, "Done");
+	}
+
+	private <T extends McpMapping.SideMarked, E extends Entry<?>> void applyMappingChange(E entry, EntryMapping mapping, Map<String, T> mappings, ToNewMapping<T, E> toNewMapping) {
+		if (mapping == null || mapping.targetName() == null) {
+			mappings.remove(entry.getName());
+		} else {
+			T existed = mappings.get(entry.getName());
+			int side = existed == null ? 0 : existed.side();
+
+			mappings.put(entry.getName(), toNewMapping.apply(entry, mapping, side));
+		}
+	}
+
+	private interface ToNewMapping<T extends McpMapping.SideMarked, E extends Entry<?>> {
+		T apply(@NotNull E entry, @NotNull EntryMapping mapping, int side);
 	}
 
 	private static void write(Path base, String fileName, StringBuilder content) throws IOException {
