@@ -224,7 +224,7 @@ public class McpMappingIO {
 	}
 
 	private <T extends McpMapping.SideMarked, E extends Entry<?>> void applyMappingChange(E entry, EntryMapping mapping, Map<String, T> mappings, ToNewMapping<T, E> toNewMapping) {
-		if (mapping == null || mapping.targetName() == null) {
+		if (mapping == null || mapping.equals(EntryMapping.DEFAULT)) {
 			mappings.remove(entry.getName());
 		} else {
 			T existed = mappings.get(entry.getName());
