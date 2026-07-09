@@ -165,7 +165,7 @@ public class McpMappingIO {
 									e.getName(),
 									m.targetName(),
 									side,
-									e.getJavadocs()
+									m.javadoc()
 							)
 					);
 				} else if (entry instanceof MethodEntry method) {
@@ -177,7 +177,7 @@ public class McpMappingIO {
 									e.getName(),
 									m.targetName(),
 									side,
-									e.getJavadocs()
+									m.javadoc()
 							)
 					);
 				} else if (entry instanceof LocalVariableEntry local && local.isArgument()) {
