@@ -21,7 +21,12 @@ jobs:
 
       - run: chmod +x gradlew
 
-      - run: ./gradlew build --stacktrace
+      - name: Build with additional version suffix
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          VERSION_EXPR=$(grep '^enigma_version=' gradle.properties)
+          # add suffix to version expression
+          ./gradlew build -P${VERSION_EXPR}-${SHORT_SHA} --stacktrace
 
       - uses: actions/upload-artifact@v7
         with:

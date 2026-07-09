@@ -27,7 +27,7 @@ subprojects {
 	}
 
 	group = 'cuchaz'
-	version = '4.0.2'
+	version = property("enigma_version").toString()
 
 	version = version + (System.getenv("GITHUB_ACTIONS") ? "" : "+local")
 
