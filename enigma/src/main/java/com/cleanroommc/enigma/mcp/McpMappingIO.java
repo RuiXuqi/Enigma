@@ -153,6 +153,11 @@ public class McpMappingIO {
 				var methodPrinter = new CSVPrinter(methodsWriter, fieldMethodFormat);
 				var paramPrinter = new CSVPrinter(paramsWriter, paramFormat)) {
 			for (EntryTreeNode<?> node : delta.getChanges()) {
+				// Change trees include ancestors to retain hierarchy; only valued nodes are edits.
+				if (!node.hasValue()) {
+					continue;
+				}
+
 				Entry<?> entry = node.getEntry();
 				EntryMapping mapping = mappings.get(entry);
 
