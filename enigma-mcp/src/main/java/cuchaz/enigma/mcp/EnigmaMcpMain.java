@@ -1,18 +1,20 @@
 package cuchaz.enigma.mcp;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -45,6 +47,9 @@ import cuchaz.enigma.translation.mapping.tree.EntryTree;
 
 public class EnigmaMcpMain {
 	public static void main(String[] args) {
+		PrintStream protocolOutput = System.out;
+		System.setOut(System.err);
+
 		OptionParser parser = new OptionParser();
 
 		OptionSpec<Path> jarOpt = parser.accepts("jar", "Jar file to open at startup")
@@ -91,14 +96,15 @@ public class EnigmaMcpMain {
 
 		System.err.println("Starting enigma-mcp server");
 
-		runServer(profileFile, jars, libraries, mappingFormat, mappingsFile);
+		runServer(profileFile, jars, libraries, mappingFormat, mappingsFile, protocolOutput);
 	}
 
 	private static void runServer(Path profileFile,
 			List<Path> jars,
 			List<Path> libraries,
 			MappingFormat mappingFormat,
-			Path mappingsFile) {
+			Path mappingsFile,
+			PrintStream protocolOutput) {
 		McpSyncServer server = null;
 
 		try {
@@ -146,7 +152,10 @@ public class EnigmaMcpMain {
 				project.setMappings(mappings);
 			}
 
-			StdioServerTransportProvider transport = new StdioServerTransportProvider(McpJsonDefaults.getMapper());
+			SerializedStdioServerTransportProvider transport = new SerializedStdioServerTransportProvider(
+					McpJsonDefaults.getMapper(), System.in, protocolOutput
+			);
+			ReadWriteLock projectLock = new ReentrantReadWriteLock(true);
 
 			List<McpServerFeatures.SyncToolSpecification> tools = Stream.of(
 							new SearchEntryTool(project),
@@ -161,7 +170,7 @@ public class EnigmaMcpMain {
 							new SaveTool(project, mappingsFile, mappingFormat, profile.getMappingSaveParameters()),
 							new GetEnigmaInfoTool(project, mappingsFile, mappingFormat)
 					)
-					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec))
+					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec, projectLock))
 					.toList();
 
 			server = McpServer.sync(transport)

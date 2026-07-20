@@ -38,6 +38,11 @@ public record DecompileTool(EnigmaProject project, ClassHandleProvider classHand
 	}
 
 	@Override
+	public boolean requiresExclusiveAccess() {
+		return true;
+	}
+
+	@Override
 	public McpSchema.CallToolResult callTool(
 			McpSyncServerExchange exchange,
 			McpSchema.CallToolRequest request,

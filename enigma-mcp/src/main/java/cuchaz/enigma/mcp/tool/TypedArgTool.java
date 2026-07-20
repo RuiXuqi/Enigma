@@ -2,6 +2,8 @@ package cuchaz.enigma.mcp.tool;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.github.victools.jsonschema.generator.OptionPreset;
@@ -29,7 +31,11 @@ import tools.jackson.databind.json.JsonMapper;
 public interface TypedArgTool<T> {
 	SchemaGeneratorConfig COMMON_CONFIG = createCommonConfig();
 
-	static <T> McpServerFeatures.SyncToolSpecification createMcpTool(SchemaGeneratorConfig config, TypedArgTool<T> tool) {
+	static <T> McpServerFeatures.SyncToolSpecification createMcpTool(
+			SchemaGeneratorConfig config,
+			TypedArgTool<T> tool,
+			ReadWriteLock projectLock
+	) {
 		JsonNode jsonSchema = new SchemaGenerator(config).generateSchema(tool.argObjectType());
 
 		ObjectMapper objectMapper = config.getObjectMapper();
@@ -45,9 +51,21 @@ public interface TypedArgTool<T> {
 
 		builder = tool.configureToolBuilder(builder);
 
-		return new McpServerFeatures.SyncToolSpecification(builder.build(), (exchange, request) -> {
-			T argObject = objectMapper.convertValue(request.arguments(), tool.argObjectType());
-			return tool.callTool(exchange, request, argObject);
+		McpSchema.Tool mcpTool = builder.build();
+		boolean useReadLock = mcpTool.annotations() != null
+				&& Boolean.TRUE.equals(mcpTool.annotations().readOnlyHint())
+				&& !tool.requiresExclusiveAccess();
+
+		return new McpServerFeatures.SyncToolSpecification(mcpTool, (exchange, request) -> {
+			Lock lock = useReadLock ? projectLock.readLock() : projectLock.writeLock();
+			lock.lock();
+
+			try {
+				T argObject = objectMapper.convertValue(request.arguments(), tool.argObjectType());
+				return tool.callTool(exchange, request, argObject);
+			} finally {
+				lock.unlock();
+			}
 		});
 	}
 
@@ -57,6 +75,10 @@ public interface TypedArgTool<T> {
 
 	default McpSchema.Tool.Builder configureToolBuilder(McpSchema.Tool.Builder builder) {
 		return builder;
+	}
+
+	default boolean requiresExclusiveAccess() {
+		return false;
 	}
 
 	McpSchema.CallToolResult callTool(McpSyncServerExchange exchange, McpSchema.CallToolRequest request, T arg);
