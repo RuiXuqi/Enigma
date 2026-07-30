@@ -7,8 +7,12 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -25,6 +29,8 @@ import cuchaz.enigma.translation.mapping.serde.MappingSaveParameters;
 import cuchaz.enigma.translation.mapping.tree.EntryTree;
 import cuchaz.enigma.translation.mapping.tree.EntryTreeNode;
 import cuchaz.enigma.translation.mapping.tree.HashEntryTree;
+import cuchaz.enigma.translation.representation.AccessFlags;
+import cuchaz.enigma.translation.representation.TypeDescriptor;
 import cuchaz.enigma.translation.representation.entry.Entry;
 import cuchaz.enigma.translation.representation.entry.FieldEntry;
 import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
@@ -34,6 +40,9 @@ import cuchaz.enigma.translation.representation.entry.MethodEntry;
  * @author ZZZank
  */
 public class McpMappingIO {
+	private static final Pattern SRG_METHOD_NAME = Pattern.compile("[fF]unc_(\\d+)_.*");
+	private static final Pattern MCP_PARAM_NAME = Pattern.compile("p_.+_\\d+_");
+
 	private volatile McpMapping mcpMapping;
 
 	public EntryTree<EntryMapping> read(
@@ -122,11 +131,39 @@ public class McpMappingIO {
 			}
 		}
 
-		for (LocalVariableEntry param : index.getEntryIndex().getParameters()) {
+		Set<LocalVariableEntry> indexedParameters = new HashSet<>(index.getEntryIndex().getParameters());
+
+		for (LocalVariableEntry param : indexedParameters) {
 			McpMapping.ParamMappingEntry mappingEntry = mcpMapping.params().get(param.getName());
 
 			if (mappingEntry != null) {
 				tree.insert(param, new EntryMapping(mappingEntry.name()));
+			}
+		}
+
+		for (MethodEntry method : index.getEntryIndex().getMethods()) {
+			Matcher matcher = SRG_METHOD_NAME.matcher(method.getName());
+
+			if (!matcher.matches()) {
+				continue;
+			}
+
+			AccessFlags access = index.getEntryIndex().getMethodAccess(method);
+			int localVariableIndex = access != null && access.isStatic() ? 0 : 1;
+
+			for (TypeDescriptor argument : method.getDesc().getArgumentDescs()) {
+				String srgName = "p_" + matcher.group(1) + "_" + localVariableIndex + "_";
+				LocalVariableEntry param = new LocalVariableEntry(method, localVariableIndex, srgName, true, null);
+
+				if (!indexedParameters.contains(param)) {
+					McpMapping.ParamMappingEntry mappingEntry = mcpMapping.params().get(srgName);
+
+					if (mappingEntry != null) {
+						tree.insert(param, new EntryMapping(mappingEntry.name()));
+					}
+				}
+
+				localVariableIndex += argument.getSize();
 			}
 		}
 
@@ -186,16 +223,20 @@ public class McpMappingIO {
 							)
 					);
 				} else if (entry instanceof LocalVariableEntry local && local.isArgument()) {
-					applyMappingChange(
-							local,
-							mapping,
-							mcpMapping.params(),
-							(e, m, side) -> new McpMapping.ParamMappingEntry(
-									e.getName(),
-									m.targetName(),
-									side
-							)
-					);
+					LocalVariableEntry mcpParam = toMcpParameter(local);
+
+					if (mcpParam != null) {
+						applyMappingChange(
+								mcpParam,
+								mapping,
+								mcpMapping.params(),
+								(e, m, side) -> new McpMapping.ParamMappingEntry(
+										e.getName(),
+										m.targetName(),
+										side
+								)
+						);
+					}
 				}
 			}
 
@@ -226,6 +267,20 @@ public class McpMappingIO {
 		}
 
 		progressListener.step(2, "Done");
+	}
+
+	private static LocalVariableEntry toMcpParameter(LocalVariableEntry local) {
+		if (MCP_PARAM_NAME.matcher(local.getName()).matches()) {
+			return local;
+		}
+
+		Matcher matcher = SRG_METHOD_NAME.matcher(local.getParent().getName());
+
+		if (!matcher.matches()) {
+			return null;
+		}
+
+		return local.withName("p_" + matcher.group(1) + "_" + local.getIndex() + "_");
 	}
 
 	private <T extends McpMapping.SideMarked, E extends Entry<?>> void applyMappingChange(E entry, EntryMapping mapping, Map<String, T> mappings, ToNewMapping<T, E> toNewMapping) {
