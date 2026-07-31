@@ -185,7 +185,7 @@ public class EnigmaMcpMain {
 
 			System.err.println("enigma-mcp server initialized");
 
-			Thread.currentThread().join();
+			transport.awaitTermination();
 		} catch (IOException | MappingParseException | IllegalArgumentException e) {
 			System.err.println("Error starting enigma-mcp server!");
 			e.printStackTrace(System.err);

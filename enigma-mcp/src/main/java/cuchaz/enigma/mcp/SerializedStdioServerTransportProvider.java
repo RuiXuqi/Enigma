@@ -3,6 +3,7 @@ package cuchaz.enigma.mcp;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 
 import io.modelcontextprotocol.json.McpJsonMapper;
@@ -20,6 +21,7 @@ import reactor.core.publisher.Mono;
  */
 final class SerializedStdioServerTransportProvider implements McpServerTransportProvider {
 	private final StdioServerTransportProvider delegate;
+	private final CountDownLatch termination = new CountDownLatch(1);
 
 	SerializedStdioServerTransportProvider(McpJsonMapper jsonMapper, InputStream input, OutputStream output) {
 		delegate = new StdioServerTransportProvider(jsonMapper, input, output);
@@ -27,7 +29,11 @@ final class SerializedStdioServerTransportProvider implements McpServerTransport
 
 	@Override
 	public void setSessionFactory(McpServerSession.Factory sessionFactory) {
-		delegate.setSessionFactory(transport -> sessionFactory.create(new SerializedTransport(transport)));
+		delegate.setSessionFactory(transport -> sessionFactory.create(new SerializedTransport(transport, termination)));
+	}
+
+	void awaitTermination() throws InterruptedException {
+		termination.await();
 	}
 
 	@Override
@@ -42,12 +48,16 @@ final class SerializedStdioServerTransportProvider implements McpServerTransport
 
 	@Override
 	public Mono<Void> closeGracefully() {
-		return delegate.closeGracefully();
+		return delegate.closeGracefully().doFinally(ignored -> termination.countDown());
 	}
 
 	@Override
 	public void close() {
-		delegate.close();
+		try {
+			delegate.close();
+		} finally {
+			termination.countDown();
+		}
 	}
 
 	@Override
@@ -57,10 +67,12 @@ final class SerializedStdioServerTransportProvider implements McpServerTransport
 
 	private static final class SerializedTransport implements McpServerTransport {
 		private final McpServerTransport delegate;
+		private final CountDownLatch termination;
 		private final Semaphore sendPermit = new Semaphore(1, true);
 
-		private SerializedTransport(McpServerTransport delegate) {
+		private SerializedTransport(McpServerTransport delegate, CountDownLatch termination) {
 			this.delegate = delegate;
+			this.termination = termination;
 		}
 
 		@Override
@@ -82,12 +94,16 @@ final class SerializedStdioServerTransportProvider implements McpServerTransport
 
 		@Override
 		public Mono<Void> closeGracefully() {
-			return delegate.closeGracefully();
+			return delegate.closeGracefully().doFinally(ignored -> termination.countDown());
 		}
 
 		@Override
 		public void close() {
-			delegate.close();
+			try {
+				delegate.close();
+			} finally {
+				termination.countDown();
+			}
 		}
 
 		@Override
