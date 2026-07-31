@@ -70,6 +70,9 @@ public class EnigmaMcpMain {
 		OptionSpec<Path> profileOpt = parser.accepts("profile", "Profile json to apply at startup")
 				.withRequiredArg()
 				.withValuesConvertedBy(PathConverter.INSTANCE);
+		OptionSpec<Integer> httpPortOpt = parser.accepts("http-port", "Serve Streamable HTTP on localhost instead of stdio")
+				.withRequiredArg()
+				.ofType(Integer.class);
 		OptionSpec<Void> helpOpt = parser.accepts("help", "Display help message").forHelp();
 
 		OptionSet parsedArgs;
@@ -90,6 +93,7 @@ public class EnigmaMcpMain {
 		MappingFormat mappingFormat = parsedArgs.valueOfOptional(mappingFormatOpt).orElse(null);
 		Path profileFile = parsedArgs.valueOf(profileOpt);
 		List<Path> libraries = parsedArgs.valuesOf(librariesOpt);
+		Integer httpPort = parsedArgs.valueOf(httpPortOpt);
 
 		if ((mappingsFile == null) != (mappingFormat == null)) {
 			throw new IllegalArgumentException("%s and %s should be used in group");
@@ -97,7 +101,7 @@ public class EnigmaMcpMain {
 
 		System.err.println("Starting enigma-mcp server");
 
-		runServer(profileFile, jars, libraries, mappingFormat, mappingsFile, protocolOutput);
+		runServer(profileFile, jars, libraries, mappingFormat, mappingsFile, protocolOutput, httpPort);
 	}
 
 	private static void runServer(Path profileFile,
@@ -105,7 +109,8 @@ public class EnigmaMcpMain {
 			List<Path> libraries,
 			MappingFormat mappingFormat,
 			Path mappingsFile,
-			PrintStream protocolOutput) {
+			PrintStream protocolOutput,
+			Integer httpPort) {
 		McpSyncServer server = null;
 
 		try {
@@ -153,9 +158,6 @@ public class EnigmaMcpMain {
 				project.setMappings(mappings);
 			}
 
-			SerializedStdioServerTransportProvider transport = new SerializedStdioServerTransportProvider(
-					McpJsonDefaults.getMapper(), System.in, protocolOutput
-			);
 			ReadWriteLock projectLock = new ReentrantReadWriteLock(true);
 
 			List<McpServerFeatures.SyncToolSpecification> tools = Stream.of(
@@ -175,17 +177,28 @@ public class EnigmaMcpMain {
 					.map((TypedArgTool<?> spec) -> TypedArgTool.createMcpTool(TypedArgTool.COMMON_CONFIG, spec, projectLock))
 					.toList();
 
-			server = McpServer.sync(transport)
-					.serverInfo("enigma-mcp", Enigma.VERSION)
-					.capabilities(McpSchema.ServerCapabilities.builder()
-							.tools(true)
-							.build())
-					.tools(tools)
-					.build();
+			if (httpPort != null) {
+				try (StreamableHttpMcpServer httpServer = StreamableHttpMcpServer.start(httpPort, tools)) {
+					System.err.println("enigma-mcp server initialized at http://127.0.0.1:"
+							+ httpServer.port() + StreamableHttpMcpServer.ENDPOINT);
+					httpServer.join();
+				}
+			} else {
+				SerializedStdioServerTransportProvider transport = new SerializedStdioServerTransportProvider(
+						McpJsonDefaults.getMapper(), System.in, protocolOutput
+				);
+				server = McpServer.sync(transport)
+						.serverInfo("enigma-mcp", Enigma.VERSION)
+						.capabilities(McpSchema.ServerCapabilities.builder()
+								.tools(true)
+								.build())
+						.tools(tools)
+						.build();
 
-			System.err.println("enigma-mcp server initialized");
+				System.err.println("enigma-mcp server initialized");
 
-			transport.awaitTermination();
+				transport.awaitTermination();
+			}
 		} catch (IOException | MappingParseException | IllegalArgumentException e) {
 			System.err.println("Error starting enigma-mcp server!");
 			e.printStackTrace(System.err);
@@ -201,6 +214,10 @@ public class EnigmaMcpMain {
 			}
 
 			Thread.currentThread().interrupt();
+		} catch (Exception e) {
+			System.err.println("Error running enigma-mcp HTTP server!");
+			e.printStackTrace(System.err);
+			System.exit(1);
 		}
 	}
 
